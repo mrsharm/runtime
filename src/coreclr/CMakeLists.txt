@@ -123,9 +123,9 @@ add_subdirectory(debug/debug-pal)
 
 add_subdirectory(minipal)
 
-if(CLR_CMAKE_TARGET_WIN32)
-  add_subdirectory(gc/sample)
-endif()
+#if(CLR_CMAKE_TARGET_WIN32)
+#  add_subdirectory(gc/sample)
+#endif()
 
 #-------------------------------------
 # Include directory directives
