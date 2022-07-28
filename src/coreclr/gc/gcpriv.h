@@ -4063,6 +4063,8 @@ public:
 
     PER_HEAP_ISOLATED
     size_t total_virtual_commit_calls;
+    PER_HEAP_ISOLATED
+    size_t total_virtual_decommit_calls;
 
     PER_HEAP_ISOLATED
     size_t total_mem_committed_bookkeeping;

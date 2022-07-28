@@ -72,8 +72,18 @@ size_t gc_heap::total_mem_committed  = 0;
 size_t      gc_heap::total_mem_cleared = 0;
 size_t gc_heap::total_mem_decommitted  = 0;
 size_t gc_heap::total_virtual_commit_calls = 0;
+size_t gc_heap::total_virtual_decommit_calls = 0;
 size_t gc_heap::total_mem_committed_bookkeeping = 0;
 
+inline void save_allocated(heap_segment* seg)
+{
+#ifndef MULTIPLE_HEAP
+    if (!heap_segment_saved_allocated(seg))
+#endif // !MULTIPLE_HEAP
+    {
+        heap_segment_saved_allocated (seg) = heap_segment_allocated (seg);
+    }
+}
 
 #ifdef USE_REGIONS
 // If the pinned survived is 1+% of the region size, we don't demote.
@@ -589,6 +599,8 @@ void GCHeap::Shutdown()
 #ifndef MULTIPLE_HEAPS
     dprintf (8888, ("total_mem_cleared: %Id, total_mem_committed: %Id, total_mem_decommitted: %Id, total_mem_committed_bookkeeping: %Id", 
         gc_heap::total_mem_cleared, gc_heap::total_mem_committed, gc_heap::total_mem_decommitted,gc_heap::total_mem_committed_bookkeeping));
+    dprintf (8888, ("virtual commit calls: %Id, virtual decommit calls: %Id",
+        gc_heap::total_virtual_commit_calls, gc_heap::total_virtual_decommit_calls));
 #endif //MULTIPLE_HEAPS
     if (gc_log_on && (gc_log != NULL))
     {
@@ -11466,7 +11478,7 @@ void gc_heap::init_heap_segment (heap_segment* seg, gc_heap* hp
     heap_segment_next (seg) = 0;
     heap_segment_plan_allocated (seg) = heap_segment_mem (seg);
     heap_segment_allocated (seg) = heap_segment_mem (seg);
-    heap_segment_saved_allocated (seg) = heap_segment_mem (seg);
+    save_allocated(seg);
     heap_segment_decommit_target (seg) = heap_segment_reserved (seg);
 #ifdef BACKGROUND_GC
     heap_segment_background_allocated (seg) = 0;
@@ -28205,16 +28217,6 @@ void gc_heap::add_plug_in_condemned_info (generation* gen, size_t plug_size)
 }
 #endif //FEATURE_EVENT_TRACE
 
-inline void save_allocated(heap_segment* seg)
-{
-#ifndef MULTIPLE_HEAP
-    if (!heap_segment_saved_allocated(seg))
-#endif // !MULTIPLE_HEAP
-    {
-        heap_segment_saved_allocated (seg) = heap_segment_allocated (seg);
-    }
-}
-
 #ifdef _PREFAST_
 #pragma warning(push)
 #pragma warning(disable:21000) // Suppress PREFast warning about overly large function
@@ -28403,7 +28405,7 @@ void gc_heap::plan_phase (int condemned_gen_number)
                     bgc_clear_batch_mark_array_bits (start_unmarked, heap_segment_allocated (seg));
                 }
 #endif //BACKGROUND_GC
-                heap_segment_saved_allocated (seg) = heap_segment_allocated (seg);
+                save_allocated(seg);
                 heap_segment_allocated (seg) = start_unmarked;
 
                 seg = heap_segment_next_rw (seg);
@@ -28686,7 +28688,8 @@ void gc_heap::plan_phase (int condemned_gen_number)
 #endif //USE_REGIONS
             {
                 assert (heap_segment_allocated (seg1) == end);
-                heap_segment_saved_allocated (seg1) = heap_segment_allocated (seg1);
+                save_allocated(seg1);
+                //heap_segment_saved_allocated (seg1) = heap_segment_allocated (seg1);
                 heap_segment_allocated (seg1) = plug_end;
                 current_brick = update_brick_table (tree, current_brick, x, plug_end);
                 dprintf (REGIONS_LOG, ("region %Ix-%Ix(%Ix) non SIP",
@@ -30964,7 +30967,7 @@ void gc_heap::sweep_region_in_plan (heap_segment* region,
 #endif //_DEBUG
 
     assert (last_marked_obj_end);
-    heap_segment_saved_allocated (region) = heap_segment_allocated (region);
+    save_allocated(region);
     heap_segment_allocated (region) = last_marked_obj_end;
     heap_segment_plan_allocated (region) = heap_segment_allocated (region);
 
@@ -40457,10 +40460,12 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
         // high fragmentation - it's just enough planned fragmentation for us to
         // want to compact. Also the "fragmentation" we are talking about here
         // is different from anywhere else.
-        dprintf (GTC_LOG, ("frag: %Id, fragmentation_burden: %.3f",
-            fragmentation, fragmentation_burden));
         BOOL frag_exceeded = ((fragmentation >= dd_fragmentation_limit (dd)) &&
                                 (fragmentation_burden >= dd_fragmentation_burden_limit (dd)));
+        dprintf (GTC_LOG, ("In decide_on_compacting: frag: %Id, dd_fragmentation_limit(dd): %Id, fragmentation_burden: %.3f, dd_fragmentation_burden_limit(dd): %.3f",
+            fragmentation, dd_fragmentation_limit(dd), fragmentation_burden, dd_fragmentation_burden_limit(dd) ));
+        dprintf (GTC_LOG, ("In decide_on_compacting: fragmentation >= dd_fragmentation_limit(dd): %d | fragmentation_burden >= dd_fragmentation_burden_limit(dd): %d | Frag Exceeded: %d", 
+            ( fragmentation >= dd_fragmentation_limit(dd) ), ( fragmentation_burden >= dd_fragmentation_burden_limit(dd), !!frag_exceeded )));
 
         if (frag_exceeded)
         {
