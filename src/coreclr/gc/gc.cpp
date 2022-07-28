@@ -69,7 +69,7 @@ BOOL bgc_heap_walk_for_etw_p = FALSE;
 #endif //SERVER_GC
 
 size_t gc_heap::total_mem_committed  = 0;
-size_t      gc_heap::total_mem_cleared = 0;
+size_t gc_heap::total_mem_cleared = 0;
 size_t gc_heap::total_mem_decommitted  = 0;
 size_t gc_heap::total_virtual_commit_calls = 0;
 size_t gc_heap::total_virtual_decommit_calls = 0;
@@ -6845,7 +6845,7 @@ bool gc_heap::virtual_commit (void* address, size_t size, gc_oh_num oh, int h_nu
     {
         //if (settings.gc_index > 100)
         {
-            dprintf (8888, ("committed %Id + %Id -> %Id", total_mem_committed, size, (total_mem_committed + size)));
+            dprintf (8888, ("GC#: %Id, committed %Id + %Id -> %Id", VolatileLoad(&settings.gc_index), total_mem_committed, size, (total_mem_committed + size)));
         }
         total_mem_committed += size;
     }
@@ -6925,6 +6925,7 @@ bool gc_heap::virtual_decommit (void* address, size_t size, gc_oh_num oh, int h_
 #endif //!HOST_64BIT
 
     total_mem_decommitted += size;
+    ++total_virtual_decommit_calls;
 
     bool decommit_succeeded_p = GCToOSInterface::VirtualDecommit (address, size);
 
