@@ -6929,7 +6929,7 @@ bool gc_heap::virtual_decommit (void* address, size_t size, gc_oh_num oh, int h_
     {
         if (h_number >= 0)
         {
-            dprintf (8888, ("virtual_decommit: GC#: %Id, decommitted: %Id + size to decommit: %Id -> total: %Id", VolatileLoad(&settings.gc_index), total_mem_decommitted, size, (total_mem_decommitted + size)));
+            dprintf (8888, ("virtual_decommit: GC#: %Id, oh: %Id, decommitted: %Id + size to decommit: %Id -> total: %Id", VolatileLoad(&settings.gc_index), (size_t)oh, total_mem_decommitted, size, (total_mem_decommitted + size)));
         }
 
         total_mem_decommitted += size;
@@ -12461,8 +12461,11 @@ void gc_heap::distribute_free_regions()
                 {
                     num_decommit_regions_by_time++;
                     size_decommit_regions_by_time += get_region_committed_size (region);
-                    dprintf (8888, ("distribute_free_regions: h%2d region %Ix age %2d, decommit",
-                        i, heap_segment_mem (region), heap_segment_age_in_free (region)));
+                    dprintf (8888, ("distribute_free_regions: aged: h%2d region %Ix age %2d, decommit, kind: %Id",
+                        i, 
+                        heap_segment_mem (region), 
+                        heap_segment_age_in_free (region), 
+                        kind));
                     region_free_list::unlink_region (region);
                     region_free_list::add_region (region, global_regions_to_decommit);
                 }
@@ -12515,7 +12518,7 @@ void gc_heap::distribute_free_regions()
     {
         num_regions_to_decommit[kind] = surplus_regions[kind].get_num_free_regions();
 
-        dprintf(8888, ("%Id %s free regions, %Id regions budget, %Id regions on decommit list, %Id huge regions to consider",
+        dprintf(8888, ("distribute_free_regions: %Id %s free regions, %Id regions budget, %Id regions on decommit list, %Id huge regions to consider",
             total_num_free_regions[kind],
             kind_name[kind],
             total_budget_in_region_units[kind],
@@ -12551,7 +12554,7 @@ void gc_heap::distribute_free_regions()
         else
         {
             num_regions_to_decommit[kind] = balance;
-            dprintf(8888, ("distributing the %Id %s regions, removing %Id regions",
+            dprintf(8888, ("distribute_free_regions: distributing the %Id %s regions, removing %Id regions",
                 total_budget_in_region_units[kind],
                 kind_name[kind],
                 num_regions_to_decommit[kind]));
@@ -12639,7 +12642,7 @@ void gc_heap::distribute_free_regions()
     {
         if (global_regions_to_decommit[kind].get_num_free_regions() != 0)
         {
-            dprintf (8888, ("distribute_free_regions: found regions to decommit!"));
+            dprintf (8888, ("distribute_free_regions: found regions to decommit i.e. go to decommit_step and gradual decommit in progress."));
             gradual_decommit_in_progress_p = TRUE;
             break;
         }
@@ -40007,7 +40010,7 @@ bool gc_heap::decommit_step ()
             if (!use_large_pages_p)
             {
                 decommit_succeeded_p = virtual_decommit(page_start, size, heap_segment_oh(region), 0);
-                dprintf(8888, ("decommitted region %Ix(%Ix-%Ix) (%Iu bytes) - success: %d",
+                dprintf(8888, ("decommit_step: decommitted region %Ix(%Ix-%Ix) (%Iu bytes) - success: %d",
                     region,
                     page_start,
                     end,
@@ -45964,11 +45967,11 @@ void gc_heap::do_post_gc()
     }
 #endif //BGC_SERVO_TUNING
 
-    dprintf (8888, ("do_post_gc: GC#%Id : Commit For this GC: %Id; Decommit For This GC: %Id; Reason: %s",
+    dprintf (8888, ("do_post_gc: GC#%Id : Commit For this GC: %Id; Decommit For This GC: %Id; Reason: %Id",
         VolatileLoad(&settings.gc_index),
         total_mem_committed - saved_total_committed,
         total_mem_decommitted - saved_total_decommitted, 
-        settings.reason
+        (size_t)settings.reason
         ));
 
     // Save the previous GC's value.
