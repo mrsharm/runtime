@@ -19951,7 +19951,7 @@ int gc_heap::generation_to_condemn (int n_initial,
     int n_alloc = n;
     if (heap_number == 0)
     {
-        dprintf (GTC_LOG, ("generation_to_condemn: init: %d(%d)", n_initial, settings.reason));
+        dprintf (GTC_LOG, ("generation_to_condemn: init: generation: %d( reason: %d)", n_initial, settings.reason));
     }
     int i = 0;
     int temp_gen = 0;
@@ -20311,7 +20311,7 @@ int gc_heap::generation_to_condemn (int n_initial,
         {
             if (heap_number == 0)
             {
-                dprintf (GTC_LOG, ("induced - BLOCK"));
+                dprintf (GTC_LOG, ("generation_to_condemn: induced - BLOCK"));
             }
 
             *blocking_collection_p = TRUE;
@@ -21275,6 +21275,7 @@ void gc_heap::gc1()
     recover_bgc_settings();
 #endif //BACKGROUND_GC
 #endif //MULTIPLE_HEAPS
+    dprintf(GTC_LOG, ("----------End of GC: %d", VolatileLoad(&settings.gc_index)));
 }
 
 void gc_heap::save_data_for_no_gc()
@@ -22094,7 +22095,7 @@ void gc_heap::pm_full_gc_init_or_clear()
 #ifdef MULTIPLE_HEAPS
             do_post_gc();
 #endif //MULTIPLE_HEAPS
-            dprintf (GTC_LOG, ("init for PM triggered full GC"));
+            dprintf (GTC_LOG, ("pm_full_gc_init_or_clear:: init for PM triggered full GC"));
             uint32_t saved_entry_memory_load = settings.entry_memory_load;
             settings.init_mechanisms();
             settings.reason = reason_pm_full_gc;
@@ -22117,7 +22118,7 @@ void gc_heap::pm_full_gc_init_or_clear()
         assert (pm_trigger_full_gc);
         pm_trigger_full_gc = false;
 
-        dprintf (GTC_LOG, ("PM triggered full GC done"));
+        dprintf (GTC_LOG, ("pm_full_gc_init_or_clear: PM triggered full GC done"));
     }
 }
 
@@ -22175,6 +22176,7 @@ void gc_heap::garbage_collect (int n)
         goto done;
     }
 
+    dprintf(GTC_LOG, ("---------Start of GC: %d", VolatileLoad(&settings.gc_index)));
     init_records();
 
     settings.reason = gc_trigger_reason;
@@ -28367,7 +28369,7 @@ void gc_heap::plan_phase (int condemned_gen_number)
                     }
 #endif //BACKGROUND_GC
                     save_allocated(seg);
-                    dprintf(GTC_LOG, ( "Alloc: %Ix", heap_segment_saved_allocated(seg)));
+                    dprintf(GTC_LOG, ( "plan_phase: after setting save_allocated. condemned generation: %d, In Range For Segment: [seg, shigh]: Saved Alloc: %Ix", condemned_gen_index, heap_segment_saved_allocated(seg)));
                     heap_segment_allocated (seg) = shigh + Align (size (shigh));
                 }
                 // test if the segment is in the range of [slow, shigh]
@@ -28387,7 +28389,7 @@ void gc_heap::plan_phase (int condemned_gen_number)
                     }
 #endif //BACKGROUND_GC
                     save_allocated(seg);
-                    dprintf(GTC_LOG, ( "2nd Alloc: %Ix", heap_segment_saved_allocated(seg)));
+                    dprintf(GTC_LOG, ( "plan_phase: after setting saved_allocate. condemned generation: %d, Saved Alloc if segment is in range [slow, shigh]: %Ix", condemned_gen_index, heap_segment_saved_allocated(seg)));
                     // shorten it to minimum
                     heap_segment_allocated (seg) =  heap_segment_mem (seg);
                 }
@@ -40310,7 +40312,7 @@ size_t gc_heap::estimated_reclaim (int gen_number)
     size_t est_gen_surv = (size_t)((float) (gen_total_size) * dd_surv (dd));
     size_t est_gen_free = gen_total_size - est_gen_surv + dd_fragmentation (dd);
 
-    dprintf (GTC_LOG, ("h%d gen%d total size: %Id, est dead space: %Id (s: %d, allocated: %Id), frag: %Id",
+    dprintf (GTC_LOG, ("estimate_reclain: h%d gen%d total size: %Id, est dead space: %Id (s: %d, allocated: %Id), frag: %Id",
                 heap_number, gen_number,
                 gen_total_size,
                 est_gen_free,
@@ -40569,7 +40571,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
         }
     }
 
-    dprintf (3, ("will %s(%s)", (should_compact ? "compact" : "sweep"), (should_expand ? "ex" : "")));
+    dprintf (8888, ("will %s(%s)", (should_compact ? "compact" : "sweep"), (should_expand ? "ex" : "")));
     return should_compact;
 }
 
@@ -42069,7 +42071,7 @@ void gc_heap::background_sweep()
     leave_spin_lock (&more_space_lock_uoh);
 
     //dprintf (GTC_LOG, ("---- (GC%d)End Background Sweep Phase ----", VolatileLoad(&settings.gc_index)));
-    dprintf (GTC_LOG, ("---- (GC%d)ESw ----", VolatileLoad(&settings.gc_index)));
+    dprintf (GTC_LOG, ("---- (GC%d) End of Sweep----", VolatileLoad(&settings.gc_index)));
 }
 #endif //BACKGROUND_GC
 
@@ -45553,7 +45555,7 @@ void gc_heap::do_pre_gc()
         (settings.concurrent ? "BGC" : (gc_heap::background_running_p() ? "FGC" : "NGC")),
         settings.b_state));
 #else
-    dprintf (1, ("*GC* %d(gen0:%d)(%d)(alloc: %Id)",
+    dprintf (1, ("do_pre_gc: %d(gen0 collection count: %d)(Condemned Generation: %d)(alloc since last gc: %Id)",
         VolatileLoad(&settings.gc_index),
         dd_collection_count(hp->dynamic_data_of(0)),
         settings.condemned_generation,
