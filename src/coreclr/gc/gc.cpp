@@ -6845,7 +6845,7 @@ bool gc_heap::virtual_commit (void* address, size_t size, gc_oh_num oh, int h_nu
     {
         //if (settings.gc_index > 100)
         {
-            dprintf (8888, ("GC#: %Id, committed %Id + %Id -> %Id", VolatileLoad(&settings.gc_index), total_mem_committed, size, (total_mem_committed + size)));
+            dprintf (8888, ("virtual_commit: GC#: %Id, committed: %Id + size to commit: %Id -> total: %Id", VolatileLoad(&settings.gc_index), total_mem_committed, size, (total_mem_committed + size)));
         }
         total_mem_committed += size;
     }
@@ -6924,10 +6924,17 @@ bool gc_heap::virtual_decommit (void* address, size_t size, gc_oh_num oh, int h_
     assert (heap_hard_limit == 0);
 #endif //!HOST_64BIT
 
-    total_mem_decommitted += size;
-    ++total_virtual_decommit_calls;
-
     bool decommit_succeeded_p = GCToOSInterface::VirtualDecommit (address, size);
+    if (decommit_succeeded_p)
+    {
+        if (h_number >= 0)
+        {
+            dprintf (8888, ("virtual_decommit: GC#: %Id, decommitted: %Id + size to decommit: %Id -> total: %Id", VolatileLoad(&settings.gc_index), total_mem_decommitted, size, (total_mem_decommitted + size)));
+        }
+
+        total_mem_decommitted += size;
+        ++total_virtual_decommit_calls;
+    }
 
     if (decommit_succeeded_p && heap_hard_limit)
     {
@@ -6941,8 +6948,6 @@ bool gc_heap::virtual_decommit (void* address, size_t size, gc_oh_num oh, int h_
 
     return decommit_succeeded_p;
 }
-
-
 
 void gc_heap::virtual_free (void* add, size_t allocated_size, heap_segment* sg)
 {
@@ -11535,6 +11540,7 @@ void gc_heap::delete_heap_segment (heap_segment* seg, BOOL consider_hoarding)
     }
 
 #ifdef USE_REGIONS
+    dprintf (GTC_LOG, ("delete_heap_segment: deleting region %Ix", heap_segment_mem (seg)));
     return_free_region (seg);
 #else // USE_REGIONS
     if (consider_hoarding)
@@ -11617,14 +11623,15 @@ size_t gc_heap::decommit_heap_segment_pages_worker (heap_segment* seg,
     assert (!use_large_pages_p);
     uint8_t* page_start = align_on_page (new_committed);
     ptrdiff_t size = heap_segment_committed (seg) - page_start;
-    dprintf (8888, ("actual decommitting %Ix from %Ix(%Id) to %Ix(%Id), (%Id)",
-        heap_segment_mem (seg),
-        (page_start - heap_segment_allocated (seg)),
-        page_start, heap_segment_committed (seg), 
-        (heap_segment_committed (seg) - heap_segment_allocated (seg)),
-        size));
     if (size > 0)
     {
+        dprintf (8888, ("actual decommitting %Id on seg %Ix, alloc: %Ix, committed: %Ix, new_committed: %Ix",
+            size, 
+            heap_segment_mem (seg),
+            heap_segment_allocated (seg),
+            heap_segment_committed (seg),
+            new_committed));
+
         bool decommit_succeeded_p = virtual_decommit (page_start, (size_t)size, heap_segment_oh (seg), heap_number);
         if (decommit_succeeded_p)
         {
@@ -12468,18 +12475,21 @@ void gc_heap::distribute_free_regions()
 
         heap_budget_in_region_units[i][basic_free_region] = 0;
         heap_budget_in_region_units[i][large_free_region] = 0;
+        ptrdiff_t total_soh_budget_gen = 0;
         for (int gen = soh_gen0; gen < total_generation_count; gen++)
         {
             ptrdiff_t budget_gen = max (hp->estimate_gen_growth (gen), 0);
             int kind = gen >= loh_generation;
-            size_t budget_gen_in_region_units = (budget_gen + (region_size[kind] - 1)) / region_size[kind];
-            if (gen == soh_gen0)
+            if (kind == 0)
             {
-                dprintf (8888, ("h%2d gen %d has an estimated growth of %Id bytes (%Id regions)", i, gen, budget_gen, budget_gen_in_region_units));
+                total_soh_budget_gen += budget_gen;
             }
+            size_t budget_gen_in_region_units = (budget_gen + (region_size[kind] - 1)) / region_size[kind];
             heap_budget_in_region_units[i][kind] += budget_gen_in_region_units;
             total_budget_in_region_units[kind] += budget_gen_in_region_units;
         }
+
+        dprintf (8888, ("h%2d soh budget gen %Id (%Id regions)", i, total_soh_budget_gen, total_budget_in_region_units[basic_free_region]));
     }
 
     dprintf (8888, ("moved %2d regions (%8Id) to decommit based on time", num_decommit_regions_by_time, size_decommit_regions_by_time));
@@ -15570,6 +15580,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
         {
             dprintf(3, ("clearing memory at %Ix for %d bytes", clear_start, clear_limit - clear_start));
             memclr(clear_start, clear_limit - clear_start);
+            total_mem_cleared += clear_limit - clear_start;
         }
     }
     else
@@ -15590,6 +15601,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
 
             dprintf (2, ("clearing memory before used at %Ix for %Id bytes", clear_start, used - clear_start));
             memclr (clear_start, used - clear_start);
+            total_mem_cleared += used - clear_start;
         }
     }
 
@@ -15977,7 +15989,7 @@ BOOL gc_heap::short_on_end_of_seg (heap_segment* seg)
     {
         if (sufficient_gen0_space_p)
         {
-            dprintf (GTC_LOG, ("gen0 has enough free space"));
+            dprintf (GTC_LOG, ("short_on_end_of_seg: gen0 has enough free space"));
         }
 
         sufficient_p = sufficient_gen0_space_p;
@@ -16487,7 +16499,7 @@ bool gc_heap::wait_for_bgc_high_memory (alloc_wait_reason awr, bool loh_p)
         if (memory_load >= m_high_memory_load_th)
         {
             wait_p = true;
-            dprintf (GTC_LOG, ("high mem - wait for BGC to finish, wait reason: %d", awr));
+            dprintf (GTC_LOG, ("wait_for_bgc_high_memory: high mem - wait for BGC to finish, wait reason: %d", awr));
             wait_for_background (awr, loh_p);
         }
     }
@@ -19851,7 +19863,7 @@ bool gc_heap::try_get_new_free_region()
             if (init_table_for_region (0, region))
             {
                 return_free_region (region);
-                dprintf (REGIONS_LOG, ("h%d got a new empty region %Ix", heap_number, region));
+                dprintf (8888, ("h%d got a new empty region %Ix", heap_number, region));
             }
             else
             {
@@ -19936,7 +19948,7 @@ int gc_heap::generation_to_condemn (int n_initial,
     int n_alloc = n;
     if (heap_number == 0)
     {
-        dprintf (GTC_LOG, ("init: %d(%d)", n_initial, settings.reason));
+        dprintf (GTC_LOG, ("generation_to_condemn: init: %d(%d)", n_initial, settings.reason));
     }
     int i = 0;
     int temp_gen = 0;
@@ -19976,7 +19988,7 @@ int gc_heap::generation_to_condemn (int n_initial,
         for (i = 0; i < total_generation_count; i++)
         {
             dynamic_data* dd = dynamic_data_of (i);
-            dprintf (GTC_LOG, ("h%d: g%d: l: %Id (%Id)",
+            dprintf (GTC_LOG, ("generation_to_condemn: h%d: g%d: l: %Id (%Id)",
                 heap_number, i,
                 dd_new_allocation (dd),
                 dd_desired_allocation (dd)));
@@ -20085,7 +20097,7 @@ int gc_heap::generation_to_condemn (int n_initial,
 
     if (n != n_alloc)
     {
-        dprintf (GTC_LOG, ("Condemning %d based on time tuning and fragmentation", n));
+        dprintf (GTC_LOG, ("generation_to_condemn: Condemning %d based on time tuning and fragmentation", n));
     }
 #endif //BACKGROUND_GC && !MULTIPLE_HEAPS
 
@@ -20139,7 +20151,7 @@ int gc_heap::generation_to_condemn (int n_initial,
     }
 
 #ifdef USE_REGIONS
-    dprintf (8888, ("try get new"));
+    dprintf (8888, ("generation_to_condemn: try get new"));
     if (!try_get_new_free_region())
     {
         dprintf (GTC_LOG, ("can't get an empty region -> full compacting"));
@@ -20260,7 +20272,7 @@ int gc_heap::generation_to_condemn (int n_initial,
         }
     }
 
-    dprintf (GTC_LOG, ("h%d: le: %d, hm: %d, vm: %d, f: %d",
+    dprintf (GTC_LOG, ("generation_to_condemn: h%d: low_ephemeral_space: %d, high_memory_load: %d, v_high_memory_load: %d, high_fragmentation: %d",
                  heap_number, low_ephemeral_space, high_memory_load, v_high_memory_load,
                  high_fragmentation));
 
@@ -29280,7 +29292,7 @@ void gc_heap::plan_phase (int condemned_gen_number)
     plan_generation_starts (consing_gen);
 #endif //!USE_REGIONS
 
-    descr_generations ("AP");
+    //descr_generations ("AP");
 
     print_free_and_plug ("AP");
 
@@ -30377,7 +30389,7 @@ heap_segment* gc_heap::find_first_valid_region (heap_segment* region, bool compa
             heap_segment* region_to_delete = current_region;
             current_region = heap_segment_next (current_region);
             return_free_region (region_to_delete);
-            dprintf (REGIONS_LOG, ("  h%d gen%d return region %Ix to free, current->%Ix(%Ix)",
+            dprintf (8888, ("FFVR h%d gen%d return region %Ix to free, current->%Ix(%Ix)",
                 heap_number, gen_num, heap_segment_mem (region_to_delete),
                 current_region, (current_region ? heap_segment_mem (current_region) : 0)));
             if (!current_region)
@@ -30449,6 +30461,7 @@ void gc_heap::thread_final_regions (bool compact_p)
     {
         if (reserved_free_regions_sip[i])
         {
+            dprintf (8888, ("returning sip reserve %Ix", heap_segment_mem (reserved_free_regions_sip[i])));
             return_free_region (reserved_free_regions_sip[i]);
         }
     }
@@ -39805,7 +39818,7 @@ ptrdiff_t gc_heap::estimate_gen_growth (int gen_number)
 #else  //USE_REGIONS
     // estimate how we are going to need in this generation - estimate half the free list space gets used
     ptrdiff_t budget_gen = new_allocation_gen - (free_list_space_gen / 2);
-    dprintf (REGIONS_LOG, ("budget for gen %d on heap %d is %Id (new %Id, free %Id)",
+    dprintf (8888, ("budget for gen %d on heap %d is %Id (new %Id, free %Id)",
         gen_number, heap_number, budget_gen, new_allocation_gen, free_list_space_gen));
 #endif //USE_REGIONS
 
@@ -39904,11 +39917,12 @@ void gc_heap::decommit_ephemeral_segment_pages()
 #endif // HOST_64BIT
 
     uint8_t *decommit_target = heap_segment_allocated (ephemeral_heap_segment) + slack_space;
-    //dprintf (8888, ("eph %Ix alloc %Ix decommit target %Ix(%Id)->%Ix(%Id)", 
-    //    heap_segment_mem (ephemeral_heap_segment), heap_segment_allocated (ephemeral_heap_segment),
-    //    heap_segment_decommit_target (ephemeral_heap_segment),
-    //    (ptrdiff_t)(heap_segment_decommit_target (ephemeral_heap_segment) - heap_segment_allocated (ephemeral_heap_segment)),
-    //    decommit_target, (ptrdiff_t)(decommit_target - heap_segment_allocated (ephemeral_heap_segment))));
+    dprintf (8888, ("gen0 budget: %Id, eph %Ix alloc %Ix decommit target %Ix(%Id)->%Ix(%Id)", 
+        dd_new_allocation (dd0),
+        heap_segment_mem (ephemeral_heap_segment), heap_segment_allocated (ephemeral_heap_segment),
+        heap_segment_decommit_target (ephemeral_heap_segment),
+        (ptrdiff_t)(heap_segment_decommit_target (ephemeral_heap_segment) - heap_segment_allocated (ephemeral_heap_segment)),
+        decommit_target, (ptrdiff_t)(decommit_target - heap_segment_allocated (ephemeral_heap_segment))));
     if (decommit_target < heap_segment_decommit_target (ephemeral_heap_segment))
     {
         // we used to have a higher target - do exponential smoothing by computing
@@ -40140,7 +40154,7 @@ size_t gc_heap::generation_fragmentation (generation* gen,
             frag += (heap_segment_saved_allocated (seg) -
                  heap_segment_plan_allocated (seg));
 
-            dprintf (GTC_LOG, ("h%d g%d adding seg plan frag: %Ix-%Ix=%Id -> %Id %Ix",
+            dprintf (3, ("h%d g%d adding seg plan frag: %Ix-%Ix=%Id -> %Id %Ix",
                 heap_number, gen_num,
                 heap_segment_saved_allocated (seg),
                 heap_segment_plan_allocated (seg),
@@ -40220,7 +40234,7 @@ size_t gc_heap::generation_sizes (generation* gen, bool use_saved_p, bool print)
             result += end - heap_segment_mem (seg);
             if (print)
             {
-                dprintf (GTC_LOG, ("h%d gen%d size + %Id (%Ix - %Ix) -> %Id, %Ix %Ix",
+                dprintf (3, ("h%d gen%d size + %Id (%Ix - %Ix) -> %Id, %Ix %Ix",
                     heap_number, i, (end - heap_segment_mem (seg)),
                     heap_segment_mem (seg), end, result, heap_segment_saved_allocated(seg), heap_segment_allocated(seg) ));
             }
@@ -40360,7 +40374,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
     float  fragmentation_burden = ( ((0 == fragmentation) || (0 == gen_sizes)) ? (0.0f) :
                                     (float (fragmentation) / gen_sizes) );
 
-    dprintf (GTC_LOG, ("h%d g%d fragmentation: %Id (%d%%), gen_sizes: %Id",
+    dprintf (3, ("h%d g%d fragmentation: %Id (%d%%), gen_sizes: %Id",
         heap_number, settings.condemned_generation,
         fragmentation, (int)(fragmentation_burden * 100.0),
         gen_sizes));
@@ -40391,14 +40405,14 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
 
     if (settings.reason == reason_induced_compacting)
     {
-        dprintf (GTC_LOG, ("induced compacting GC"));
+        dprintf (3, ("induced compacting GC"));
         should_compact = TRUE;
         get_gc_data_per_heap()->set_mechanism (gc_heap_compact, compact_induced_compacting);
     }
 
     if (settings.reason == reason_induced_aggressive)
     {
-        dprintf (GTC_LOG, ("aggressive compacting GC"));
+        dprintf (3, ("aggressive compacting GC"));
         should_compact = TRUE;
         get_gc_data_per_heap()->set_mechanism (gc_heap_compact, compact_aggressive_compacting);
     }
@@ -40408,17 +40422,17 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
         assert (condemned_gen_number == max_generation);
         if (heap_number == 0)
         {
-            dprintf (GTC_LOG, ("PM doing compacting full GC after a gen1"));
+            dprintf (3, ("PM doing compacting full GC after a gen1"));
         }
         should_compact = TRUE;
     }
 
-    dprintf (GTC_LOG, ("Fragmentation: %d Fragmentation burden %d%%",
+    dprintf (3, ("Fragmentation: %d Fragmentation burden %d%%",
                 fragmentation, (int) (100*fragmentation_burden)));
 
     if (provisional_mode_triggered && (condemned_gen_number == (max_generation - 1)))
     {
-        dprintf (GTC_LOG, ("gen1 in PM always compact"));
+        dprintf (3, ("gen1 in PM always compact"));
         should_compact = TRUE;
     }
 
@@ -40432,7 +40446,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
     {
         if (dt_low_ephemeral_space_p (tuning_deciding_compaction))
         {
-            dprintf(GTC_LOG, ("compacting due to low ephemeral"));
+            dprintf(3, ("compacting due to low ephemeral"));
             should_compact = TRUE;
             get_gc_data_per_heap()->set_mechanism (gc_heap_compact, compact_low_ephemeral);
         }
@@ -40444,7 +40458,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
         {
             if (dt_low_ephemeral_space_p (tuning_deciding_expansion))
             {
-                dprintf (GTC_LOG,("Not enough space for all ephemeral generations with compaction"));
+                dprintf (3,("Not enough space for all ephemeral generations with compaction"));
                 should_expand = TRUE;
             }
         }
@@ -40463,9 +40477,9 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
         // is different from anywhere else.
         BOOL frag_exceeded = ((fragmentation >= dd_fragmentation_limit (dd)) &&
                                 (fragmentation_burden >= dd_fragmentation_burden_limit (dd)));
-        dprintf (GTC_LOG, ("In decide_on_compacting: frag: %Id, dd_fragmentation_limit(dd): %Id, fragmentation_burden: %.3f, dd_fragmentation_burden_limit(dd): %.3f",
+        dprintf (3, ("In decide_on_compacting: frag: %Id, dd_fragmentation_limit(dd): %Id, fragmentation_burden: %.3f, dd_fragmentation_burden_limit(dd): %.3f",
             fragmentation, dd_fragmentation_limit(dd), fragmentation_burden, dd_fragmentation_burden_limit(dd) ));
-        dprintf (GTC_LOG, ("In decide_on_compacting: fragmentation >= dd_fragmentation_limit(dd): %d | fragmentation_burden >= dd_fragmentation_burden_limit(dd): %d | Frag Exceeded: %d", 
+        dprintf (3, ("In decide_on_compacting: fragmentation >= dd_fragmentation_limit(dd): %d | fragmentation_burden >= dd_fragmentation_burden_limit(dd): %d | Frag Exceeded: %d", 
             ( fragmentation >= dd_fragmentation_limit(dd) ), ( fragmentation_burden >= dd_fragmentation_burden_limit(dd), !!frag_exceeded )));
 
         if (frag_exceeded)
@@ -40498,7 +40512,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
             {
                 if(reclaim_space > (int64_t)(min_high_fragmentation_threshold (entry_available_physical_mem, num_heaps)))
                 {
-                    dprintf(GTC_LOG,("compacting due to fragmentation in high memory"));
+                    dprintf(3,("compacting due to fragmentation in high memory"));
                     should_compact = TRUE;
                     get_gc_data_per_heap()->set_mechanism (gc_heap_compact, compact_high_mem_frag);
                 }
@@ -40508,7 +40522,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
             {
                 if(reclaim_space > (ptrdiff_t)(min_reclaim_fragmentation_threshold (num_heaps)))
                 {
-                    dprintf(GTC_LOG,("compacting due to fragmentation in very high memory"));
+                    dprintf(3,("compacting due to fragmentation in very high memory"));
                     should_compact = TRUE;
                     get_gc_data_per_heap()->set_mechanism (gc_heap_compact, compact_vhigh_mem_frag);
                 }
@@ -40552,7 +40566,7 @@ BOOL gc_heap::decide_on_compacting (int condemned_gen_number,
         }
     }
 
-    dprintf (GTC_LOG, ("will %s(%s)", (should_compact ? "compact" : "sweep"), (should_expand ? "ex" : "")));
+    dprintf (3, ("will %s(%s)", (should_compact ? "compact" : "sweep"), (should_expand ? "ex" : "")));
     return should_compact;
 }
 
@@ -42683,7 +42697,16 @@ void gc_heap::descr_generations (const char* msg)
 
     if (heap_number == 0)
     {
-        dprintf (1, ("total heap size: %Id, commit size: %Id", get_total_heap_size(), get_total_committed_size()));
+                 size_t committed_in_free = 0;
+#ifndef MULTIPLE_HEAPS
+#ifdef USE_REGIONS
+        for (int kind = basic_free_region; kind < count_free_region_kinds; kind++)
+        {
+            committed_in_free += free_regions[kind].get_size_committed_in_free();
+        }
+#endif //USE_REGIONS
+#endif //!MULTIPLE_HEAPS
+           dprintf (GTC_LOG, ("[%s] total heap size: %Id, commit size: %Id(in free %Id)", msg, get_total_heap_size(), get_total_committed_size(), committed_in_free));
     }
 
     //for (int curr_gen_number = total_generation_count - 1; curr_gen_number >= 0; curr_gen_number--)
@@ -42691,7 +42714,7 @@ void gc_heap::descr_generations (const char* msg)
     {
         size_t total_gen_size = generation_size (curr_gen_number);
 #ifdef SIMPLE_DPRINTF
-        dprintf (GTC_LOG, ("[%s][g%d]gen %d:, size: %Id, frag: %Id(L: %Id, O: %Id), f: %d%% %s %s %s",
+        dprintf (666, ("[%s][g%d]gen %d:, size: %Id, frag: %Id(L: %Id, O: %Id), f: %d%% %s %s %s",
                       msg,
                       settings.condemned_generation,
                       curr_gen_number,
@@ -45880,6 +45903,9 @@ void gc_heap::update_recorded_gen_data (last_recorded_gc_info* gc_info)
     }
 }
 
+size_t saved_total_committed = 0;
+size_t saved_total_decommitted = 0;
+
 void gc_heap::do_post_gc()
 {
 #ifdef MULTIPLE_HEAPS
@@ -45938,16 +45964,14 @@ void gc_heap::do_post_gc()
     }
 #endif //BGC_SERVO_TUNING
 
-    dprintf (8888, (ThreadStressLog::gcDetailedEndMsg(),
+    dprintf (8888, ("do_post_gc: GC#%Id : Commit For this GC: %Id; Decommit For This GC: %Id; ",
         VolatileLoad(&settings.gc_index),
-        dd_collection_count(hp->dynamic_data_of(0)),
-        (size_t)(GetHighPrecisionTimeStamp() / 1000),
-        settings.condemned_generation,
-        (settings.concurrent ? "BGC" : (gc_heap::background_running_p() ? "FGC" : "NGC")),
-        (settings.compaction ? "C" : "S"),
-        (settings.promotion ? "P" : "S"),
-        settings.entry_memory_load,
-        current_memory_load));
+        total_mem_committed - saved_total_committed,
+        total_mem_decommitted - saved_total_decommitted));
+
+    // Save the previous GC's value.
+    saved_total_decommitted = total_mem_decommitted;
+    saved_total_committed = total_mem_committed;
 
     // Now record the gc info.
     last_recorded_gc_info* last_gc_info = 0;
