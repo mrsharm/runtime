@@ -12554,7 +12554,7 @@ void gc_heap::distribute_free_regions()
         else
         {
             num_regions_to_decommit[kind] = balance;
-            dprintf(8888, ("distribute_free_regions: distributing the %Id %s regions, removing %Id regions",
+            dprintf(8888, ("distribute_free_regions: balance >= 0: distributing the %Id %s regions, removing %Id regions",
                 total_budget_in_region_units[kind],
                 kind_name[kind],
                 num_regions_to_decommit[kind]));
@@ -39815,7 +39815,7 @@ ptrdiff_t gc_heap::estimate_gen_growth (int gen_number)
 
     ptrdiff_t budget_gen = new_allocation_gen - usable_free_space - reserved_not_in_use;
 
-    dprintf(8888, ("h%2d gen %d budget %8Id allocated: %8Id, FL: %8Id, reserved_not_in_use %8Id budget_gen %8Id",
+    dprintf(8888, ("estimate_gen_growth: h%d, gen %d, budget %8Id allocated: %8Id, Free List Space: %8Id, reserved_not_in_use %8Id budget_gen: %8Id",
         heap_number, gen_number, new_allocation_gen, allocated_gen, free_list_space_gen, reserved_not_in_use, budget_gen));
 
 #else  //USE_REGIONS
@@ -42741,14 +42741,14 @@ void gc_heap::descr_generations (const char* msg)
         generation* gen = generation_of (curr_gen_number);
         heap_segment* seg = heap_segment_rw (generation_start_segment (gen));
 #ifdef USE_REGIONS
-        dprintf (8888, ("descr_generations: g%d: start seg: %Ix alloc seg: %Ix, tail region: %Ix",
+        dprintf (8888, ("descr_generations: regions data: g%d: start seg: %Ix alloc seg: %Ix, tail region: %Ix",
             curr_gen_number,
             heap_segment_mem (seg),
             heap_segment_mem (generation_allocation_segment (gen)),
             heap_segment_mem (generation_tail_region (gen))));
         while (seg)
         {
-            dprintf (8888, ("descr_generations: g%d: (%d:p %d) [%Ix %Ix(sa: %Ix, pa: %Ix)[-%Ix[ (%Id) (%Id)",
+            dprintf (8888, ("    descr_generations: g%d: (segment generation number: %d: plan generation number: %d) [heap_segment_mem: %Ix, heap_segment_allocated: %Ix(saved allocated: %Ix, plan allocated: %Ix)[heap_segment_committed: -%Ix[allocated - mem: (%Id) committed - allocated: (%Id)]",
                                curr_gen_number,
                                heap_segment_gen_num (seg),
                                heap_segment_plan_gen_num (seg),
