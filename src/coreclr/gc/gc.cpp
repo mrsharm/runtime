@@ -45964,11 +45964,11 @@ void gc_heap::do_post_gc()
     }
 #endif //BGC_SERVO_TUNING
 
-    dprintf (8888, ("do_post_gc: GC#%Id : Commit For this GC: %Id; Decommit For This GC: %Id; reason: %s",
+    dprintf (8888, ("do_post_gc: GC#%Id : Commit For this GC: %Id; Decommit For This GC: %Id; Reason: %s",
         VolatileLoad(&settings.gc_index),
         total_mem_committed - saved_total_committed,
         total_mem_decommitted - saved_total_decommitted, 
-        settings.reason, 
+        settings.reason
         ));
 
     // Save the previous GC's value.
