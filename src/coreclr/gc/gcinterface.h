@@ -166,6 +166,10 @@ struct gc_alloc_context
     void*          gc_reserved_1;
     void*          gc_reserved_2;
     int            alloc_count;
+<<<<<<< HEAD
+=======
+    Volatile<int> promotion_finished_p;
+>>>>>>> fd6000bfc6d (Added feedback)
 public:
 
     void init()
