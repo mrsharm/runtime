@@ -257,9 +257,10 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
     {
         STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x\n", pThread, pThread->GetThreadId());
+        gc_alloc_context* alloc_context = pThread->GetAllocContext();
 
         if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
-            pThread->GetAllocContext(), sc->thread_number))
+            alloc_context, sc->thread_number))
         {
             sc->thread_under_crawl = pThread;
 #ifdef FEATURE_EVENT_TRACE
@@ -270,15 +271,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
 #ifdef FEATURE_EVENT_TRACE
             sc->dwEtwRootKind = kEtwGCRootKindOther;
 #endif // FEATURE_EVENT_TRACE
-<<<<<<< HEAD
-        }
-        STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p ID = 0x%x }\n", pThread, pThread->GetThreadId());
-    }
 
-=======
-
-            // Set the flag in the alloc context to done scanning in an atomic fashion.
-            // TODO: Decide if this can be done a bit more cleanly.
             alloc_context->promotion_finished_p = 1;
         }
 
@@ -323,7 +316,6 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
         }
     }
 
->>>>>>> fd6000bfc6d (Added feedback)
     // In server GC, we should be competing for marking the statics
     // It's better to do this *after* stack scanning, because this way
     // we can make up for imbalances in stack scanning

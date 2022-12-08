@@ -26612,10 +26612,6 @@ void gc_heap::mark_phase (int condemned_gen_number, BOOL mark_only_p)
         }
 
         dprintf(3,("Marking Roots"));
-<<<<<<< HEAD
-=======
-        //printf("Calling GCScanRoots for GC: %zu | Heap Number: %zu\n",  VolatileLoad(&settings.gc_index) , heap_number);
->>>>>>> fd6000bfc6d (Added feedback)
 
         GCScan::GcScanRoots(GCHeap::Promote,
                                 condemned_gen_number, max_generation,
