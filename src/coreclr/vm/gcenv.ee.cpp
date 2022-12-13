@@ -278,9 +278,55 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
         STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p ID = 0x%x }\n", pThread, pThread->GetThreadId());
     }
 
+    bool all_neighbors_done = true;
+    const size_t NEIGHBOR_MAX = 2; 
+
     // Only in the mark phase are we try to help other threads finish off their work.
     if (sc->promotion)
     {
+        for (int i = 1; i < NEIGHBOR_MAX; i++)
+        {
+            while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
+            {
+                // TODO:
+                // 1. Heap Number. 
+                // 2. Iterate over more neighbors.
+                // 3. Stop if no more unfinished threads.
+                gc_alloc_context* alloc_context = pThread->GetAllocContext();
+
+                // if promotion_finished_p for this allocation context is false implying that the stack has to be scanned, we scan it.
+                if (alloc_context->promotion_finished_p == 0) 
+                {
+                    all_neighbors_done = false;
+                    ScanContext neighbor_sc;
+                    neighbor_sc.thread_number = (sc->thread_number + i) % 20; // TODO: Get the heap size out of this - was planning to add it to the sc.
+                    neighbor_sc.promotion = TRUE;
+                    neighbor_sc.concurrent = FALSE;
+                    neighbor_sc.thread_under_crawl = pThread;
+
+                    if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
+                        alloc_context, neighbor_sc.thread_number))
+                    {
+                        STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p with ID = %x by assistance of: %d }\n", pThread, pThread->GetThreadId(), sc->thread_number);
+
+            #ifdef FEATURE_EVENT_TRACE
+                        neighbor_sc.dwEtwRootKind = kEtwGCRootKindStack;
+            #endif // FEATURE_EVENT_TRACE
+                        ScanStackRoots(pThread, fn, &neighbor_sc);
+                        ScanTailCallArgBufferRoots(pThread, fn, &neighbor_sc);
+
+                        STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p wth ID = %x by assistance of: %d }\n", pThread, pThread->GetThreadId(), sc->thread_number);
+                        alloc_context->promotion_finished_p = 1;
+                    }
+                }
+
+                if (all_neighbors_done)
+                {
+                    break;
+                }
+            }
+        }
+
         while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
         {
             // TODO:
@@ -293,7 +339,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
             if (alloc_context->promotion_finished_p == 0) 
             {
                 ScanContext neighbor_sc;
-                neighbor_sc.thread_number = (sc->thread_number + 1) % 19; // TODO: Get the heap size out of this - was planning to add it to the sc.
+                neighbor_sc.thread_number = (sc->thread_number + 1) % 20; // TODO: Get the heap size out of this - was planning to add it to the sc.
                 neighbor_sc.promotion = TRUE;
                 neighbor_sc.concurrent = FALSE;
                 neighbor_sc.thread_under_crawl = pThread;
