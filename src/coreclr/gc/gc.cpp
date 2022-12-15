@@ -26375,7 +26375,6 @@ void gc_heap::mark_phase (int condemned_gen_number, BOOL mark_only_p)
 #ifdef MULTIPLE_HEAPS
     sc.heap_count = gc_heap::n_heaps; 
 #endif // MULTIPLE_HEAPS
-    printf("heap count: %d\n", sc.heap_count)
 
     dprintf (2, (ThreadStressLog::gcStartMarkMsg(), heap_number, condemned_gen_number));
     BOOL  full_p = (condemned_gen_number == max_generation);

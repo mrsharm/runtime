@@ -279,13 +279,12 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     }
 
     bool all_neighbors_done = true;
-    const size_t NEIGHBOR_MAX = 2; 
-    printf("NEIGHBOR MAX: %zu\n", NEIGHBOR_MAX); 
+    const size_t NEIGHBOR_COUNT = 1;
 
     // Only in the mark phase are we try to help other threads finish off their work.
     if (sc->promotion)
     {
-        for (int i = 1; i < NEIGHBOR_MAX; i++)
+        for (int i = 1; i < NEIGHBOR_COUNT + 1; i++)
         {
             while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
             {
@@ -297,7 +296,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
                 {
                     all_neighbors_done = false;
                     ScanContext neighbor_sc;
-                    neighbor_sc.thread_number = (sc->thread_number + i) % sc->heap_count; // TODO: Get the heap size out of this - was planning to add it to the sc.
+                    neighbor_sc.thread_number = (sc->thread_number + i) % sc->heap_count;
                     neighbor_sc.promotion = TRUE;
                     neighbor_sc.concurrent = FALSE;
                     neighbor_sc.thread_under_crawl = pThread;
