@@ -1018,6 +1018,7 @@ struct ScanContext
 #else
     EtwGCRootKind _unused3;
 #endif // GC_PROFILING || FEATURE_EVENT_TRACE
+    size_t heap_count;
 
     ScanContext()
     {
@@ -1032,6 +1033,7 @@ struct ScanContext
 #if defined(GC_PROFILING) || defined(FEATURE_EVENT_TRACE)
         dwEtwRootKind = kEtwGCRootKindOther;
 #endif
+        heap_count = 0;
     }
 };
 
