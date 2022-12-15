@@ -26370,7 +26370,7 @@ void gc_heap::mark_phase (int condemned_gen_number, BOOL mark_only_p)
     sc.thread_number = heap_number;
     sc.promotion = TRUE;
     sc.concurrent = FALSE;
-    sc.heap_count = 0; 
+    sc.heap_count = 1;
 
 #ifdef MULTIPLE_HEAPS
     sc.heap_count = gc_heap::n_heaps; 
