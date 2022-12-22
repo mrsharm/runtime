@@ -296,14 +296,14 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
                 {
                     all_neighbors_done = false;
                     ScanContext neighbor_sc;
-                    neighbor_sc.thread_number = (sc->thread_number + i) % sc->heap_count;
+                    neighbor_sc.thread_number = sc->thread_number; 
                     neighbor_sc.promotion = TRUE;
                     neighbor_sc.concurrent = FALSE;
                     neighbor_sc.thread_under_crawl = pThread;
                     neighbor_sc.heap_count = sc->heap_count;
 
                     if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
-                        alloc_context, neighbor_sc.thread_number))
+                        alloc_context, (neighbor_sc.thread_number + i) % sc->heap_count ))
                     {
                         STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p with ID = %x by assistance of: %d }\n", pThread, pThread->GetThreadId(), sc->thread_number);
 
@@ -317,11 +317,11 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
                         alloc_context->promotion_finished_p = 1;
                     }
                 }
+            }
 
-                if (all_neighbors_done)
-                {
-                    break;
-                }
+            if (all_neighbors_done)
+            {
+                break;
             }
         }
     }
