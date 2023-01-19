@@ -180,6 +180,7 @@ public:
         gc_reserved_1 = 0;
         gc_reserved_2 = 0;
         alloc_count = 0;
+        promotion_finished_p = 0;
     }
 };
 

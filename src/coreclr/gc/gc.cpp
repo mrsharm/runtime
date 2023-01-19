@@ -7438,7 +7438,7 @@ void gc_heap::fix_allocation_context (alloc_context* acontext, BOOL for_gc_p,
     dprintf (3, ("Fixing allocation context %Ix: ptr: %Ix, limit: %Ix",
                  (size_t)acontext,
                  (size_t)acontext->alloc_ptr, (size_t)acontext->alloc_limit));
-
+    acontext->promotion_finished_p = 0;
     if (acontext->alloc_ptr == 0)
     {
         return;
@@ -34077,7 +34077,7 @@ void gc_heap::compact_phase (int condemned_gen_number,
             {
                 if (args.last_plug != 0)
                 {
-                    dprintf (3, ("compacting last plug: %Ix", args.last_plug))
+                    dprintf (3, ("compacting last plug: %Ix", args.last_plug));
                     compact_plug (args.last_plug,
                                   (heap_segment_allocated (current_heap_segment) - args.last_plug),
                                   args.is_shortened,
