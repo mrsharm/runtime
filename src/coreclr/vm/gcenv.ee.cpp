@@ -257,6 +257,12 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
     {
         gc_alloc_context* alloc_context = pThread->GetAllocContext();
+
+        if (sc->promotion && alloc_context->promotion_finished_p == 1)
+        {
+            //continue;
+        }
+
         STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x with promoted_finished_p: %d\n", pThread, pThread->GetThreadId(), alloc_context->promotion_finished_p);
 
         if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
