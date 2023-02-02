@@ -45003,6 +45003,7 @@ HRESULT GCHeap::Init(size_t hn)
 //System wide initialization
 HRESULT GCHeap::Initialize()
 {
+    printf("Neighbors: 10\n");
     HRESULT hr = S_OK;
 
     qpf = (uint64_t)GCToOSInterface::QueryPerformanceFrequency();

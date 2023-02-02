@@ -258,10 +258,11 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     {
         gc_alloc_context* alloc_context = pThread->GetAllocContext();
 
-        if (sc->promotion && alloc_context->promotion_finished_p == 1)
-        {
+        //if (sc->promotion && alloc_context->promotion_finished_p == 1)
+        //{
+            // TODO: Add: STRESS_LOG1(LF_GCROOTS, LL_INFO10, "GCScan: Before Continue = %d\n", sc->promotion);
             //continue;
-        }
+        //}
 
         STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x with promoted_finished_p: %d\n", pThread, pThread->GetThreadId(), alloc_context->promotion_finished_p);
 
@@ -285,7 +286,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     }
 
     bool all_neighbors_done = true;
-    const size_t NEIGHBOR_COUNT = 19;
+    const size_t NEIGHBOR_COUNT = 10;
 
     // Only in the mark phase are we try to help other threads finish off their work.
     if (sc->promotion)
@@ -294,7 +295,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
 
         for (int i = 1; i < NEIGHBOR_COUNT + 1; i++)
         {
-            pThread = nullptr;
+            //pThread = nullptr;
             while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
             {
                 // TODO:
@@ -306,6 +307,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
                     STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "{ Checking scanning of Thread %p via %d\n", pThread->GetThreadId(), sc->thread_number);
 
                     all_neighbors_done = false;
+
                     ScanContext neighbor_sc;
                     neighbor_sc.thread_number = sc->thread_number; 
                     neighbor_sc.promotion = TRUE;
@@ -314,7 +316,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
                     neighbor_sc.heap_count = sc->heap_count;
 
                     if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
-                        alloc_context, (sc->thread_number + i) % sc->heap_count ))
+                        alloc_context, (neighbor_sc.thread_number + i) % neighbor_sc.heap_count))
                     {
                         STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p with ID = %d by assistance of: %d }\n", pThread, pThread->GetThreadId(), sc->thread_number);
 

@@ -166,7 +166,7 @@ struct gc_alloc_context
     void*          gc_reserved_1;
     void*          gc_reserved_2;
     int            alloc_count;
-    int promotion_finished_p;
+    int            promotion_finished_p;
 public:
 
     void init()
