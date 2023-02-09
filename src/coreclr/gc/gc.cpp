@@ -7438,7 +7438,7 @@ void gc_heap::fix_allocation_context (alloc_context* acontext, BOOL for_gc_p,
     dprintf (3, ("Fixing allocation context %Ix: ptr: %Ix, limit: %Ix",
                  (size_t)acontext,
                  (size_t)acontext->alloc_ptr, (size_t)acontext->alloc_limit));
-
+    acontext->promotion_finished_p = 0;
     if (acontext->alloc_ptr == 0)
     {
         return;
@@ -26385,6 +26385,11 @@ void gc_heap::mark_phase (int condemned_gen_number, BOOL mark_only_p)
     sc.thread_number = heap_number;
     sc.promotion = TRUE;
     sc.concurrent = FALSE;
+    sc.heap_count = 1;
+
+#ifdef MULTIPLE_HEAPS
+    sc.heap_count = gc_heap::n_heaps; 
+#endif // MULTIPLE_HEAPS
 
     dprintf (2, (ThreadStressLog::gcStartMarkMsg(), heap_number, condemned_gen_number));
     BOOL  full_p = (condemned_gen_number == max_generation);
@@ -30820,6 +30825,11 @@ void gc_heap::plan_phase (int condemned_gen_number)
             sc.thread_number = heap_number;
             sc.promotion = FALSE;
             sc.concurrent = FALSE;
+            sc.heap_count = 1;
+#ifdef MULTIPLE_HEAPS
+            sc.heap_count = gc_heap::n_heaps; 
+#endif // MULTIPLE_HEAPS
+
             // new generations bounds are set can call this guy
             if (settings.promotion && !settings.demotion)
             {
@@ -30934,6 +30944,10 @@ void gc_heap::plan_phase (int condemned_gen_number)
         sc.thread_number = heap_number;
         sc.promotion = FALSE;
         sc.concurrent = FALSE;
+        sc.heap_count = 1; 
+#ifdef MULTIPLE_HEAPS
+            sc.heap_count = gc_heap::n_heaps; 
+#endif // MULTIPLE_HEAPS
 
         dprintf (2, ("**** Doing Mark and Sweep GC****"));
 
@@ -33400,8 +33414,10 @@ void gc_heap::relocate_phase (int condemned_gen_number,
     sc.thread_number = heap_number;
     sc.promotion = FALSE;
     sc.concurrent = FALSE;
+    sc.heap_count = 1; 
 
 #ifdef MULTIPLE_HEAPS
+    sc.heap_count = gc_heap::n_heaps;
     //join all threads to make sure they are synchronized
     dprintf(3, ("Joining after end of plan"));
     gc_t_join.join(this, gc_join_begin_relocate_phase);
@@ -34080,7 +34096,7 @@ void gc_heap::compact_phase (int condemned_gen_number,
             {
                 if (args.last_plug != 0)
                 {
-                    dprintf (3, ("compacting last plug: %Ix", args.last_plug))
+                    dprintf (3, ("compacting last plug: %Ix", args.last_plug));
                     compact_plug (args.last_plug,
                                   (heap_segment_allocated (current_heap_segment) - args.last_plug),
                                   args.is_shortened,
@@ -34817,11 +34833,14 @@ void gc_heap::background_mark_phase ()
     sc.thread_number = heap_number;
     sc.promotion = TRUE;
     sc.concurrent = FALSE;
+    sc.heap_count = 1;
 
     THREAD_FROM_HEAP;
     BOOL cooperative_mode = TRUE;
 #ifndef MULTIPLE_HEAPS
     const int thread = heap_number;
+#else
+    sc.heap_count = gc_heap::n_heaps; 
 #endif //!MULTIPLE_HEAPS
 
     dprintf(2,("-(GC%d)BMark-", VolatileLoad(&settings.gc_index)));
@@ -44839,6 +44858,10 @@ void gc_heap::verify_heap (BOOL begin_gc_p)
         // limit its scope to handle table verification.
         ScanContext sc;
         sc.thread_number = heap_number;
+        sc.heap_count = 1; 
+#ifdef MULTIPLE_HEAPS 
+        sc.heap_count = gc_heap::n_heaps;
+#endif // MULTIPLE_HEAPS
         GCScan::VerifyHandleTable(max_generation, max_generation, &sc);
     }
 
@@ -48309,8 +48332,10 @@ CFinalize::ScanForFinalization (promote_func* pfn, int gen, BOOL mark_only_p,
 {
     ScanContext sc;
     sc.promotion = TRUE;
+    sc.heap_count = 1;
 #ifdef MULTIPLE_HEAPS
     sc.thread_number = hp->heap_number;
+    sc.heap_count = gc_heap::n_heaps; 
 #else
     UNREFERENCED_PARAMETER(hp);
 #endif //MULTIPLE_HEAPS
@@ -48415,8 +48440,10 @@ CFinalize::RelocateFinalizationData (int gen, gc_heap* hp)
 {
     ScanContext sc;
     sc.promotion = FALSE;
+    sc.heap_count = 1;
 #ifdef MULTIPLE_HEAPS
     sc.thread_number = hp->heap_number;
+    sc.heap_count = gc_heap::n_heaps; 
 #else
     UNREFERENCED_PARAMETER(hp);
 #endif //MULTIPLE_HEAPS

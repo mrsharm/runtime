@@ -256,10 +256,18 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     Thread* pThread = NULL;
     while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
     {
-        STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x\n", pThread, pThread->GetThreadId());
+        gc_alloc_context* alloc_context = pThread->GetAllocContext();
+
+        //if (sc->promotion && alloc_context->promotion_finished_p == 1)
+        //{
+            // TODO: Add: STRESS_LOG1(LF_GCROOTS, LL_INFO10, "GCScan: Before Continue = %d\n", sc->promotion);
+            //continue;
+        //}
+
+        STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x with promoted_finished_p: %d\n", pThread, pThread->GetThreadId(), alloc_context->promotion_finished_p);
 
         if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
-            pThread->GetAllocContext(), sc->thread_number))
+            alloc_context, sc->thread_number))
         {
             sc->thread_under_crawl = pThread;
 #ifdef FEATURE_EVENT_TRACE
@@ -270,8 +278,65 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
 #ifdef FEATURE_EVENT_TRACE
             sc->dwEtwRootKind = kEtwGCRootKindOther;
 #endif // FEATURE_EVENT_TRACE
+
+            alloc_context->promotion_finished_p = 1;
         }
+
         STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p ID = 0x%x }\n", pThread, pThread->GetThreadId());
+    }
+
+    bool all_neighbors_done = true;
+    const size_t NEIGHBOR_COUNT = 1;
+
+    // Only in the mark phase are we try to help other threads finish off their work.
+    if (sc->promotion)
+    {
+        STRESS_LOG1(LF_GC | LF_GCROOTS, LL_INFO100, "{ Entering Check if Stack Scanning for other threads is possible via %d\n", sc->thread_number);
+
+        for (int i = 1; i < NEIGHBOR_COUNT + 1; i++)
+        {
+            //pThread = nullptr;
+            while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
+            {
+                // TODO:
+                gc_alloc_context* alloc_context = pThread->GetAllocContext();
+
+                // if promotion_finished_p for this allocation context is false implying that the stack has to be scanned, we scan it.
+                if (alloc_context->promotion_finished_p == 0) 
+                {
+                    STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "{ Checking scanning of Thread %p via %d\n", pThread->GetThreadId(), sc->thread_number);
+
+                    all_neighbors_done = false;
+
+                    ScanContext neighbor_sc;
+                    neighbor_sc.thread_number = sc->thread_number; 
+                    neighbor_sc.promotion = TRUE;
+                    neighbor_sc.concurrent = FALSE;
+                    neighbor_sc.thread_under_crawl = pThread;
+                    neighbor_sc.heap_count = sc->heap_count;
+
+                    if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
+                        alloc_context, (neighbor_sc.thread_number + i) % neighbor_sc.heap_count))
+                    {
+                        STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p with ID = %d by assistance of: %d }\n", pThread, pThread->GetThreadId(), sc->thread_number);
+
+            #ifdef FEATURE_EVENT_TRACE
+                        neighbor_sc.dwEtwRootKind = kEtwGCRootKindStack;
+            #endif // FEATURE_EVENT_TRACE
+                        ScanStackRoots(pThread, fn, &neighbor_sc);
+                        ScanTailCallArgBufferRoots(pThread, fn, &neighbor_sc);
+
+                        STRESS_LOG3(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p wth ID = %d by assistance of: %d }\n", pThread, pThread->GetThreadId(), sc->thread_number);
+                        alloc_context->promotion_finished_p = 1;
+                    }
+                }
+            }
+
+            if (all_neighbors_done)
+            {
+                break;
+            }
+        }
     }
 
     // In server GC, we should be competing for marking the statics

@@ -166,6 +166,7 @@ struct gc_alloc_context
     void*          gc_reserved_1;
     void*          gc_reserved_2;
     int            alloc_count;
+    int            promotion_finished_p;
 public:
 
     void init()
@@ -179,6 +180,7 @@ public:
         gc_reserved_1 = 0;
         gc_reserved_2 = 0;
         alloc_count = 0;
+        promotion_finished_p = 0;
     }
 };
 
@@ -1017,6 +1019,7 @@ struct ScanContext
 #else
     EtwGCRootKind _unused3;
 #endif // GC_PROFILING || FEATURE_EVENT_TRACE
+    size_t heap_count;
 
     ScanContext()
     {
@@ -1031,6 +1034,7 @@ struct ScanContext
 #if defined(GC_PROFILING) || defined(FEATURE_EVENT_TRACE)
         dwEtwRootKind = kEtwGCRootKindOther;
 #endif
+        heap_count = 0;
     }
 };
 
