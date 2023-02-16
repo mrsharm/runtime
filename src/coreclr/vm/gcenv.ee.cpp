@@ -286,7 +286,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     }
 
     bool all_neighbors_done = true;
-    const size_t NEIGHBOR_COUNT = 1;
+    const size_t NEIGHBOR_COUNT = 0;
 
     // Only in the mark phase are we try to help other threads finish off their work.
     if (sc->promotion)
