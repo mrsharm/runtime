@@ -49,6 +49,8 @@ VOID GCToEEInterface::SyncBlockCacheWeakPtrScan(HANDLESCANPROC scanProc, uintptr
     SyncBlockCache::GetSyncBlockCache()->GCWeakPtrScan(scanProc, lp1, lp2);
 }
 
+static bool heapScannedFlag[1024];
+
 void GCToEEInterface::BeforeGcScanRoots(int condemned, bool is_bgc, bool is_concurrent)
 {
     CONTRACTL
@@ -65,6 +67,12 @@ void GCToEEInterface::BeforeGcScanRoots(int condemned, bool is_bgc, bool is_conc
         StubHelpers::ProcessByrefValidationList();
     }
 #endif // VERIFY_HEAP
+
+    // TODO: Initialize the static array here.
+    for (int i = 0; i < 1024; i++)
+    {
+        heapScannedFlag[i] = false;
+    }
 
     Interop::OnBeforeGCScanRoots(is_concurrent);
 }
@@ -279,6 +287,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
             sc->dwEtwRootKind = kEtwGCRootKindOther;
 #endif // FEATURE_EVENT_TRACE
 
+            heapScannedFlag[sc->thread_number] = true;
             alloc_context->promotion_finished_p = 1;
         }
 
@@ -286,7 +295,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     }
 
     bool all_neighbors_done = true;
-    const size_t NEIGHBOR_COUNT = 0;
+    const size_t NEIGHBOR_COUNT = 8;
 
     // Only in the mark phase are we try to help other threads finish off their work.
     if (sc->promotion)
@@ -295,10 +304,14 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
 
         for (int i = 1; i < NEIGHBOR_COUNT + 1; i++)
         {
+            if (heapScannedFlag[(sc->thread_number + i) % sc->heap_count])
+            {
+                continue;
+            }
+
             //pThread = nullptr;
             while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
             {
-                // TODO:
                 gc_alloc_context* alloc_context = pThread->GetAllocContext();
 
                 // if promotion_finished_p for this allocation context is false implying that the stack has to be scanned, we scan it.
@@ -331,6 +344,8 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
                     }
                 }
             }
+            
+            heapScannedFlag[(sc->thread_number + i) % sc->heap_count] = true;
 
             if (all_neighbors_done)
             {
