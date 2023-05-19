@@ -10520,6 +10520,12 @@ void gc_heap::merge_mark_lists (size_t total_mark_list_size)
 
             // blast this piece to the mark list
             append_to_mark_list(source[lowest_source], x);
+#ifdef USE_REGIONS
+            if (mark_list_index > mark_list_end)
+            {
+                return nullptr;
+            }
+#endif //USE_REGIONS
             piece_count++;
 
             source[lowest_source] = x;
@@ -10539,6 +10545,12 @@ void gc_heap::merge_mark_lists (size_t total_mark_list_size)
         }
         // we're left with just one source that we copy
         append_to_mark_list(source[0], source_end[0]);
+#ifdef USE_REGIONS
+        if (mark_list_index > mark_list_end)
+        {
+            return nullptr;
+        }
+#endif //USE_REGIONS
         piece_count++;
     }
 
@@ -29718,6 +29730,8 @@ void gc_heap::plan_phase (int condemned_gen_number)
     uint8_t** mark_list_next = nullptr;
     if (use_mark_list)
         mark_list_next = get_region_mark_list (x, end, &mark_list_index);
+    if (!mark_list_next)
+        use_mark_list = false;
 #else // USE_REGIONS
     assert (!marked (x));
     uint8_t** mark_list_next = &mark_list[0];
@@ -30006,6 +30020,8 @@ void gc_heap::plan_phase (int condemned_gen_number)
 #ifdef USE_REGIONS
                 if (use_mark_list)
                     mark_list_next = get_region_mark_list (x, end, &mark_list_index);
+                if (!mark_list_next)
+                    use_mark_list = false;
 
                 if (should_sweep_in_plan (seg1))
                 {
@@ -30076,6 +30092,8 @@ void gc_heap::plan_phase (int condemned_gen_number)
 
                     if (use_mark_list)
                         mark_list_next = get_region_mark_list (x, end, &mark_list_index);
+                    if (!mark_list_next)
+                        use_mark_list = false;
 
                     if (should_sweep_in_plan (seg1))
                     {
