@@ -24832,7 +24832,7 @@ void gc_heap::check_heap_count ()
 
                 // estimate the size of each generation as the live data size plus the budget
                 heap_size += dd_promoted_size (dd) + dd_desired_allocation (dd);
-                dprintf (6666, ("h%d g%d promoted: %zd desired allocation: %zd", i, gen_idx, dd_promoted_size (dd), dd_desired_allocation (dd)));
+                dprintf (6666, ("[Dynamic Heap Count]: h%d g%d promoted: %zd desired allocation: %zd | Estimating the size of each generation per heap.", i, gen_idx, dd_promoted_size (dd), dd_desired_allocation (dd)));
             }
         }
 
@@ -24847,12 +24847,13 @@ void gc_heap::check_heap_count ()
         sample.allocating_thread_count = allocating_thread_count;
         sample.heap_size = heap_size;
 
-        dprintf (6666, ("sample %d: msl_wait_time: %zd, elapsed_between_gcs: %zd, gc_elapsed_time: %d, heap_size: %zd MB",
+        dprintf (6666, ("[Dynamic Heap Count]: sample %d: msl_wait_time: %zd, elapsed_between_gcs: %zd, gc_elapsed_time: %d, heap_size: %zd MB, gc#: %zd | Computing the individual details.",
             dynamic_heap_count_data.sample_index,
             sample.msl_wait_time,
             sample.elapsed_between_gcs,
             sample.gc_elapsed_time,
-            sample.heap_size/(1024*1024)));
+            sample.heap_size/(1024*1024),
+            VolatileLoad(&settings.gc_index)));
 
         dynamic_heap_count_data.sample_index = (dynamic_heap_count_data.sample_index + 1) % dynamic_heap_count_data_t::sample_size;
 
@@ -24881,7 +24882,7 @@ void gc_heap::check_heap_count ()
                     percent_overhead[i] = 0;
                 else if (percent_overhead[i] > 100)
                     percent_overhead[i] = 100;
-                dprintf (6666, ("sample %d: percent_overhead: %d%%", i, (int)percent_overhead[i]));
+                dprintf (6666, ("[Dynamic Heap Count]: sample %d: percent_overhead: %d%% | No background GC, compute the percent overhead", i, (int)percent_overhead[i]));
             }
             // compute the median of the percent overhead samples
         #define compare_and_swap(i, j)                                       \
@@ -24900,7 +24901,7 @@ void gc_heap::check_heap_count ()
 
             // the middle element is the median overhead percentage
             float median_percent_overhead = percent_overhead[1];
-            dprintf (6666, ("median overhead: %d%%", median_percent_overhead));
+            dprintf (6666, ("[Dynamic Heap Count]: median overhead: %d%% | Median overhead computed.", median_percent_overhead));
 
             // estimate the space cost of adding a heap as the min gen0 size
             size_t heap_space_cost_per_heap = dd_min_size (hp0_dd0);
@@ -24967,7 +24968,13 @@ void gc_heap::check_heap_count ()
                 new_n_heaps -= step_down;
             }
 
-            dprintf (6666, ("or: %d, si: %d,  sd: %d, oi: %d => %d -> %d",
+            dprintf (6666, ("[Dynamic Heap Count]: gc_idx: %zu, msl_wait_time: %zd, elapsed_between_gcs: %zd, gc_elapsed_time: %d, heap_size_mb: %zd, median_percent_overhead: %d, overhead_reduction_per_step_up: %d, space_cost_increase_per_step_up: %d, space_cost_decrease_per_step_down: %d, overhead_increase_per_step_down: %d, n_heaps: %d, new_n_heaps: %d, | New Heap vs. Old Heap Details.",
+                VolatileLoad(&settings.gc_index),
+                sample.msl_wait_time,
+                sample.elapsed_between_gcs,
+                sample.gc_elapsed_time,
+                sample.heap_size/(1024*1024),
+                (int)percent_overhead[1],
                 (int)overhead_reduction_per_step_up,
                 (int)space_cost_increase_per_step_up,
                 (int)space_cost_decrease_per_step_down,
