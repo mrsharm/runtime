@@ -48,5 +48,7 @@ KNOWN_EVENT(PrvSetGCHandle, GCEventProvider_Private, GCEventLevel_Information, G
 KNOWN_EVENT(PrvDestroyGCHandle, GCEventProvider_Private, GCEventLevel_Information, GCEventKeyword_GCHandlePrivate)
 KNOWN_EVENT(PinPlugAtGCTime, GCEventProvider_Private, GCEventLevel_Verbose, GCEventKeyword_GCPrivate)
 
+DYNAMIC_EVENT(Hello, GCEventLevel_Verbose, GCEventKeyword_GCPrivate)
+
 #undef KNOWN_EVENT
 #undef DYNAMIC_EVENT

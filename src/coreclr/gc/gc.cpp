@@ -47721,6 +47721,11 @@ HRESULT GCHeap::Initialize()
     qpf_ms = 1000.0 / (double)qpf;
     qpf_us = 1000.0 * 1000.0 / (double)qpf;
 
+#ifdef FEATURE_EVENT_TRACE
+    //DYNAMIC_EVENT("Initialize", 1, "Hello");
+    GCEventFireHello<uint32_t>((uint32_t)1);
+#endif // FEATURE_EVENT_TRACE
+
     g_gc_pFreeObjectMethodTable = GCToEEInterface::GetFreeObjectMethodTable();
     g_num_processors = GCToOSInterface::GetTotalProcessorCount();
     assert(g_num_processors != 0);
