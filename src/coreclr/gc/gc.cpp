@@ -22412,6 +22412,8 @@ void gc_heap::gc1()
         }
     }
 
+    size_t gc_number = VolatileLoadWithoutBarrier (&settings.gc_index);
+
 #ifdef BACKGROUND_GC
     if (!settings.concurrent)
 #endif //BACKGROUND_GC
@@ -22660,7 +22662,7 @@ void gc_heap::gc1()
                     dd_desired_allocation (dd) = desired_per_heap;
                     if (gen < uoh_start_generation)
                     {
-                        dprintf(6666, ("The desired allocation per heap for heap: %d and gen: %zd is %zd", i, gen, desired_per_heap));
+                        dprintf(6666, ("GC#%d - The desired allocation per heap for heap: %d and gen: %zd is %zd", gc_number, i, gen, desired_per_heap));
                     }
 
                     dd_gc_new_allocation (dd) = desired_per_heap;
@@ -26304,6 +26306,8 @@ bool gc_heap::change_heap_count (int new_n_heaps)
                 dd_min_size (g_heaps[0]->dynamic_data_of (gen_idx))));
         }
 
+        size_t gc_number = VolatileLoad(&settings.gc_index);
+
         // distribute the new budget per heap over the new heaps
         // and recompute the current size of the generation
         for (int i = 0; i < new_n_heaps; i++)
@@ -26317,7 +26321,7 @@ bool gc_heap::change_heap_count (int new_n_heaps)
                 dd_new_allocation (dd) = new_alloc_per_heap[gen_idx];
                 if (gen_idx < 2)
                 {
-                    dprintf(6666, ("Setting dd_desired_alloc for heap: %zd and gen: %zd to max(desired_alloc_per_heap[gen_idx] (%zd), dd_min_size(dd) (%zd))", i, gen_idx, desired_alloc_per_heap[gen_idx], dd_min_size(dd) ));
+                    dprintf(6666, ("GC%d Setting dd_desired_alloc for heap: %zd and gen: %zd to max(desired_alloc_per_heap[gen_idx] (%zd), dd_min_size(dd) (%zd))", gc_number, i, gen_idx, desired_alloc_per_heap[gen_idx], dd_min_size(dd) ));
                 }
 
                 dd_desired_allocation (dd) = max (desired_alloc_per_heap[gen_idx], dd_min_size (dd));
@@ -39569,6 +39573,7 @@ void gc_heap::bgc_thread_function()
                     hp = gc_heap::g_heaps[i];
                     dd = hp->dynamic_data_of (gen);
                     dd_desired_allocation (dd) = desired_per_heap;
+                    dprintf(6666, ("GC#%d - The desired allocation per heap for heap: %d and gen: %zd is %zd", VolatileLoad(&settings.gc_index), i, gen, desired_per_heap));
                     dd_gc_new_allocation (dd) = desired_per_heap;
                     dd_new_allocation (dd) = desired_per_heap;
                 }
@@ -43953,6 +43958,8 @@ void gc_heap::compute_new_dynamic_data (int gen_number)
     generation*   gen = generation_of (gen_number);
     size_t        in = (gen_number==0) ? 0 : compute_in (gen_number);
 
+    size_t gc_number = VolatileLoad(&settings.gc_index);
+
     size_t total_gen_size = generation_size (gen_number);
     //keep track of fragmentation
     dd_fragmentation (dd) = generation_free_list_space (gen) + generation_free_obj_space (gen);
@@ -43977,6 +43984,8 @@ void gc_heap::compute_new_dynamic_data (int gen_number)
         // When we are in the low latency mode, we can still be
         // condemning more than gen1's 'cause of induced GCs.
         dd_desired_allocation (dd) = low_latency_alloc;
+        dprintf(6666, ("In Low Latency Mode: GC# %zd gen%d new_alloc: %zd", gc_number, gen_number, dd_desired_allocation (dd)));
+
         dd_gc_new_allocation (dd) = dd_desired_allocation (dd);
         dd_new_allocation (dd) = dd_gc_new_allocation (dd);
     }
@@ -43999,6 +44008,7 @@ void gc_heap::compute_new_dynamic_data (int gen_number)
             {
                 //there is no noise.
                 dd_desired_allocation (dd) = lower_bound;
+                dprintf(6666, ("GC#%d - The desired allocation per Heap with no noise for Gen0: %d and gen: %zd is %zd", gc_number, heap_number, gen, lower_bound));
             }
             else
             {
@@ -44012,21 +44022,27 @@ void gc_heap::compute_new_dynamic_data (int gen_number)
                 if (dd_desired_allocation (dd) < lower_bound)
                 {
                     dd_desired_allocation (dd) = lower_bound;
+                    dprintf(6666, ("GC#%d - The desired allocation per Heap with lower bound for Gen0: %d and gen: %zd is %zd", (size_t)settings.gc_index, heap_number, gen, lower_bound));
                 }
                 else if (dd_desired_allocation (dd) > higher_bound)
                 {
                     dd_desired_allocation (dd) = higher_bound;
+                    dprintf(6666, ("GC#%d - The desired allocation per Heap with higher bound for Gen0: %d and gen: %zd is %zd", (size_t)settings.gc_index, heap_number, gen, higher_bound));
                 }
 #if defined (HOST_64BIT) && !defined (MULTIPLE_HEAPS)
                 dd_desired_allocation (dd) = joined_youngest_desired (dd_desired_allocation (dd));
 #endif // HOST_64BIT && !MULTIPLE_HEAPS
                 trim_youngest_desired_low_memory();
-                dprintf (6666, ("final gen0 new_alloc: %zd", dd_desired_allocation (dd)));
+                if (gen_number == 1)
+                {
+                    dprintf(6666, ("GC#%d - The desired allocation per Heap with higher bound for Gen0: %d and gen: %zd is %zd", (size_t)settings.gc_index, heap_number, gen, higher_bound));
+                }
             }
         }
         else
         {
             dd_desired_allocation (dd) = desired_new_allocation (dd, out, gen_number, 0);
+            dprintf(6666, ("GC#%d - The desired allocation per Heap = desired_new_allocation: %d and gen: %zd is %zd", (size_t)settings.gc_index, heap_number, gen, dd_desired_allocation (dd)));
         }
         dd_gc_new_allocation (dd) = dd_desired_allocation (dd);
 
@@ -44058,6 +44074,7 @@ void gc_heap::compute_new_dynamic_data (int gen_number)
             in = 0;
             out = dd_current_size (dd);
             dd_desired_allocation (dd) = desired_new_allocation (dd, out, i, 0);
+            dprintf(6666, ("GC#%d - The desired allocation per Heap = desired_new_allocation: %d and gen: %zd is %zd", gc_number, heap_number, gen, dd_desired_allocation (dd)));
             dd_gc_new_allocation (dd) = Align (dd_desired_allocation (dd),
                 get_alignment_constant (FALSE));
             dd_new_allocation (dd) = dd_gc_new_allocation (dd);
