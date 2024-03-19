@@ -206,6 +206,7 @@ inline void SoftwareWriteWatch::EnableForGCHeap()
     args.operation = WriteBarrierOp::SwitchToWriteWatch;
     args.write_watch_table = g_gc_sw_ww_table;
     args.is_runtime_suspended = true;
+    dprintf(6666, ("Stomping the Write Barrier (SwitchToWriteWatch) to %zd", (size_t)args.operation))
     GCToEEInterface::StompWriteBarrier(&args);
 }
 
@@ -221,6 +222,7 @@ inline void SoftwareWriteWatch::DisableForGCHeap()
     WriteBarrierParameters args = {};
     args.operation = WriteBarrierOp::SwitchToNonWriteWatch;
     args.is_runtime_suspended = true;
+    dprintf(6666, ("Stomping the Write Barrier (SwitchToNonWriteWatch) %zd", (size_t)args.operation))
     GCToEEInterface::StompWriteBarrier(&args);
 }
 
