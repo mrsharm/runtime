@@ -51100,13 +51100,15 @@ size_t gc_heap::get_gen0_min_size()
         // performance data seems to indicate halving the size results
         // in optimal perf.  Ask for adjusted gen0 size.
         gen0size = max(GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),(256*1024));
+        printf("gen0Size computation: %zd\n", gen0Size);
 
         // if gen0 size is too large given the available memory, reduce it.
         // Get true cache size, as we don't want to reduce below this.
         size_t trueSize = max(GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE),(256*1024));
-        dprintf (1, ("cache: %zd-%zd",
+        printf("True Size: max(%d, %d) i.e., GCToOSInterface::GetCacheSizePerLogicalCPU, 256*1024\n", GCToOSInterface::GetCacheSizePerLogicalCPU(TRUE), 256*1024);
+        printf ("cache: %zd-%zd\n",
             GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),
-            GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE)));
+            GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE));
 
         int n_heaps = gc_heap::n_heaps;
 #else //SERVER_GC
@@ -51124,10 +51126,10 @@ size_t gc_heap::get_gen0_min_size()
         }
 #endif //DYNAMIC_HEAP_COUNT
 
-        dprintf (1, ("gen0size: %zd * %d = %zd, physical mem: %zd / 6 = %zd",
+        printf ("gen0size: %zd * %d = %zd, physical mem: %zd / 6 = %zd\n",
                 gen0size, n_heaps, (gen0size * n_heaps),
                 gc_heap::total_physical_mem,
-                gc_heap::total_physical_mem / 6));
+                gc_heap::total_physical_mem / 6);
 
         // if the total min GC across heaps will exceed 1/6th of available memory,
         // then reduce the min GC size until it either fits or has been reduced to cache size.

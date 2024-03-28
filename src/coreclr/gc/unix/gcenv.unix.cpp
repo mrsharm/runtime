@@ -1003,15 +1003,19 @@ size_t GCToOSInterface::GetCacheSizePerLogicalCpu(bool trueSize)
 
     size_t size = trueSize ? s_maxTrueSize : s_maxSize;
     if (size != 0)
+    {
+        printf("Size != 0 => returning size %d\n", size);
         return size;
+    }
 
     size_t maxSize, maxTrueSize;
     maxSize = maxTrueSize = GetLogicalProcessorCacheSizeFromOS(); // Returns the size of the highest level processor cache
+    printf("Max Size i.e., GetLogicalProcessorCacheSizeFromOS() = %d\n", maxSize);
 
     s_maxSize = maxSize;
     s_maxTrueSize = maxTrueSize;
 
-    // printf("GetCacheSizePerLogicalCpu returns %zu, adjusted size %zu\n", maxSize, maxTrueSize);
+    printf("GetCacheSizePerLogicalCpu returns %d, adjusted size %d\n", maxSize, maxTrueSize);
     return trueSize ? maxTrueSize : maxSize;
 }
 
