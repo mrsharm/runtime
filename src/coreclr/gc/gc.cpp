@@ -51100,13 +51100,13 @@ size_t gc_heap::get_gen0_min_size()
         // performance data seems to indicate halving the size results
         // in optimal perf.  Ask for adjusted gen0 size.
         gen0size = max(GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),(256*1024));
-        printf("gen0Size computation: %zd\n", gen0Size);
+        printf("gen0Size computation: %zd\n", gen0size);
 
         // if gen0 size is too large given the available memory, reduce it.
         // Get true cache size, as we don't want to reduce below this.
         size_t trueSize = max(GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE),(256*1024));
-        printf("True Size: max(%d, %d) i.e., GCToOSInterface::GetCacheSizePerLogicalCPU, 256*1024\n", GCToOSInterface::GetCacheSizePerLogicalCPU(TRUE), 256*1024);
-        printf ("cache: %zd-%zd\n",
+        printf("True Size: max(%d, %d) i.e., GCToOSInterface::GetCacheSizePerLogicalCPU, 256*1024\n", GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE), 256*1024);
+        printf ("cache FALSE/TRUE: %zd-%zd\n",
             GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),
             GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE));
 
