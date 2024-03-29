@@ -801,25 +801,36 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
     size_t size;
 
 #ifdef _SC_LEVEL1_DCACHE_SIZE
-    size = ( size_t) sysconf(_SC_LEVEL1_DCACHE_SIZE);
+    size_t level1_dcache_size;
+    size = level1_dcache_size = ( size_t) sysconf(_SC_LEVEL1_DCACHE_SIZE);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 1)
+    printf("[GetLogicalProcessorCacheSizeFromOS]: size after Level1DCacheSize (%zu): %zu\n", level1_dcache_size,  size);
 #endif
 #ifdef _SC_LEVEL2_CACHE_SIZE
-    size = ( size_t) sysconf(_SC_LEVEL2_CACHE_SIZE);
+    size_t level2_dcache_size;
+    size = level2_dcache_size = ( size_t) sysconf(_SC_LEVEL2_CACHE_SIZE);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 2)
+    printf("[GetLogicalProcessorCacheSizeFromOS]: size after Level2DCacheSize (%zu): %zu\n", level2_dcache_size,  size);
 #endif
 #ifdef _SC_LEVEL3_CACHE_SIZE
-    size = ( size_t) sysconf(_SC_LEVEL3_CACHE_SIZE);
+    size_t level3_dcache_size;
+    size = level3_dcache_size = ( size_t) sysconf(_SC_LEVEL3_CACHE_SIZE);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 3)
+    printf("[GetLogicalProcessorCacheSizeFromOS]: size after Level3DCacheSize (%zu): %zu\n", level3_dcache_size,  size);
 #endif
 #ifdef _SC_LEVEL4_CACHE_SIZE
-    size = ( size_t) sysconf(_SC_LEVEL4_CACHE_SIZE);
+    size_t level4_dcache_size;
+    size = level4_dcache_size = ( size_t) sysconf(_SC_LEVEL4_CACHE_SIZE);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 4)
+    printf("[GetLogicalProcessorCacheSizeFromOS]: size after Level4DCacheSize (%zu): %zu\n", level4_dcache_size,  size);
 #endif
+
+    printf("[GetLogicalProcessorCacheSizeFromOS]: size after UPDATE_CACHE_SIZE_AND_LEVEL section with highest cache size (%zu): %zu\n", cacheLevel, cacheSize);
 
 #if defined(TARGET_LINUX) && !defined(HOST_ARM) && !defined(HOST_X86)
     if (cacheSize == 0)
     {
+        printf ("[GetLogicalProcessorCacheSizeFromOS]: On invalid cache size, Defined: TARGET_LINUX but not HOST_ARM and NOT x86\n");
         //
         // Fallback to retrieve cachesize via /sys/.. if sysconf was not available
         // for the platform. Currently musl and arm64 should be only cases to use
@@ -850,6 +861,8 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
                 }
             }
         }
+
+        printf ("[GetLogicalProcessorCacheSizeFromOS]: On invalid cache size after set from reading file, Defined: TARGET_LINUX but not HOST_ARM and NOT x86 -- cacheSize: %zu \n", cacheSize);
     }
 #endif
 
@@ -878,6 +891,7 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
         DWORD logicalCPUs = g_processAffinitySet.Count();
 
         cacheSize = logicalCPUs * std::min(1536, std::max(256, (int)logicalCPUs * 128)) * 1024;
+        printf ("[GetLogicalProcessorCacheSizeFromOS]: logicalCPUs: %zu "); 
     }
 #endif
 
@@ -899,6 +913,7 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
         {
             assert(cacheSizeFromSysctl > 0);
             cacheSize = ( size_t) cacheSizeFromSysctl;
+            printf ("[GetLogicalProcessorCacheSizeFromOS]: CacheSizeFromSysCtl : %zu", cacheSize);
         }
     }
 #endif
@@ -932,9 +947,11 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
         }
 
         cacheSize *= (1024 * 1024);
+        printf("[GetLogicalProcessorCacheSizeFromOS]: ARM: %zu\n", cacheSize);
     }
 #endif
 
+    printf("[GetLogicalProcessorCacheSizeFromOS]: cacheSize in the end: (%zu): %zu\n", cacheSize);
     return cacheSize;
 }
 
@@ -998,24 +1015,25 @@ static bool ReadMemAvailable(uint64_t* memAvailable)
 //  Size of the cache
 size_t GCToOSInterface::GetCacheSizePerLogicalCpu(bool trueSize)
 {
+    printf("[GetCacheSizePerLogicalCpu]: Called with trueSize: %zu.", trueSize);
     static volatile size_t s_maxSize;
     static volatile size_t s_maxTrueSize;
 
     size_t size = trueSize ? s_maxTrueSize : s_maxSize;
     if (size != 0)
     {
-        printf("Size != 0 => returning size %d\n", size);
+        printf("[GetCacheSizePerLogicalCpu]: Size != 0 => returning size %zu\n", size);
         return size;
     }
 
     size_t maxSize, maxTrueSize;
     maxSize = maxTrueSize = GetLogicalProcessorCacheSizeFromOS(); // Returns the size of the highest level processor cache
-    printf("Max Size i.e., GetLogicalProcessorCacheSizeFromOS() = %d\n", maxSize);
+    printf("[GetCacheSizePerLogicalCPU]: Max Size i.e., GetLogicalProcessorCacheSizeFromOS() = %zu\n", maxSize);
 
     s_maxSize = maxSize;
     s_maxTrueSize = maxTrueSize;
 
-    printf("GetCacheSizePerLogicalCpu returns %d, adjusted size %d\n", maxSize, maxTrueSize);
+    printf("[GetCacheSizePerLogicalCPU]: GetCacheSizePerLogicalCpu returns %zu, adjusted size %zu\n", maxSize, maxTrueSize);
     return trueSize ? maxTrueSize : maxSize;
 }
 

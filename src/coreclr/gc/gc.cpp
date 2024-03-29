@@ -51099,14 +51099,15 @@ size_t gc_heap::get_gen0_min_size()
 #ifdef SERVER_GC
         // performance data seems to indicate halving the size results
         // in optimal perf.  Ask for adjusted gen0 size.
+        // Wrong Val: Result from CacheSizePerLogicalCPU: 18446744073709551615 vs. Physical Memory: 8056229888
+        printf("1. gen0Size computation: max(CacheSizePerLogicalCPU(FALSE)(%zu), 256 * 1024 (%zu)) = (%zu)): %zu\n", GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE), (size_t)(256 * 1024), max(GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),(256*1024)) );
         gen0size = max(GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),(256*1024));
-        printf("gen0Size computation: %zd\n", gen0size);
 
         // if gen0 size is too large given the available memory, reduce it.
         // Get true cache size, as we don't want to reduce below this.
         size_t trueSize = max(GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE),(256*1024));
-        printf("True Size: max(%d, %d) i.e., GCToOSInterface::GetCacheSizePerLogicalCPU, 256*1024\n", GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE), 256*1024);
-        printf ("cache FALSE/TRUE: %zd-%zd\n",
+        printf("2. True Size: max(%zu, %zu) i.e., max(GCToOSInterface::GetCacheSizePerLogicalCPU, 256*1024) = %zu \n", GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE), (size_t)(256*1024), trueSize);
+        printf ("3. Check Cache Size with both parameters: FALSE/TRUE: %zu-%zu\n",
             GCToOSInterface::GetCacheSizePerLogicalCpu(FALSE),
             GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE));
 
@@ -51126,7 +51127,7 @@ size_t gc_heap::get_gen0_min_size()
         }
 #endif //DYNAMIC_HEAP_COUNT
 
-        printf ("gen0size: %zd * %d = %zd, physical mem: %zd / 6 = %zd\n",
+        printf ("4. Check State: gen0size: %zd * num_heaps: %d = gen0Size * num_heaps: %zd, physical mem: %zd / 6 = %zd\n",
                 gen0size, n_heaps, (gen0size * n_heaps),
                 gc_heap::total_physical_mem,
                 gc_heap::total_physical_mem / 6);
@@ -51142,6 +51143,8 @@ size_t gc_heap::get_gen0_min_size()
                 break;
             }
         }
+
+        printf("5. Reduce the gen0 Size until it fits result: %zu", gen0size);
     }
 #ifdef FEATURE_EVENT_TRACE
     else
@@ -51155,7 +51158,10 @@ size_t gc_heap::get_gen0_min_size()
 
     // Generation 0 must never be more than 1/2 the segment size.
     if (gen0size >= (seg_size / 2))
+    {
+        printf("5. Reduce the gen0 size (%zu) by half of the seg_size (%zu): gen0Size = seg_size/2 = %zu", gen0size, seg_size, (seg_size / 2));
         gen0size = seg_size / 2;
+    }
 
     // If the value from config is valid we use it as is without this adjustment.
     if (is_config_invalid)
@@ -51170,6 +51176,7 @@ size_t gc_heap::get_gen0_min_size()
             }
         }
 
+        printf("6. Set gen0Size to gen0Size (%zu) / 8 * 5 = %zu", gen0size, (gen0size / 8 * 5));
         gen0size = gen0size / 8 * 5;
     }
 
@@ -51181,6 +51188,7 @@ size_t gc_heap::get_gen0_min_size()
 #endif //STRESS_REGIONS
 #endif //USE_REGIONS
 
+    printf("7. Align gen0Size (%zu) = %zu", gen0size, (Align(gen0size)));
     gen0size = Align (gen0size);
 
     return gen0size;
