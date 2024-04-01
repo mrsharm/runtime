@@ -43105,6 +43105,7 @@ void gc_heap::init_static_data()
         );
 #endif //MULTIPLE_HEAPS
 
+    printf ("Gen0 Max Size: %zu before max (gen0_min_size, gen0_max_size)  (SOH Segment Size= %zu) = %zu\n", gen0_max_size, max( gen0_min_size, gen0_max_size ), soh_segment_size);
     gen0_max_size = max (gen0_min_size, gen0_max_size);
 
     if (heap_hard_limit)
@@ -43151,8 +43152,7 @@ void gc_heap::init_static_data()
 
     gen1_max_size = Align (gen1_max_size);
 
-    dprintf (GTC_LOG, ("gen0 min: %zd, max: %zd, gen1 max: %zd",
-        gen0_min_size, gen0_max_size, gen1_max_size));
+    printf("gen0 min: %Id, max: %Id, gen1 max: %Id\n", gen0_min_size, gen0_max_size, gen1_max_size);
 
     for (int i = latency_level_first; i <= latency_level_last; i++)
     {
