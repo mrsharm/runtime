@@ -16777,7 +16777,8 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
 
         if (clear_start < clear_limit)
         {
-            dprintf(3, ("clearing memory at %p for %zd bytes", clear_start, clear_limit - clear_start));
+            //dprintf(6666, ("clearing memory at %p for %zd bytes", clear_start, clear_limit - clear_start));
+            dprintf(6666, ("%zd bytes", clear_limit - clear_start));
             memset_cleared += clear_limit - clear_start;
             memclr(clear_start, clear_limit - clear_start);
         }
@@ -16798,7 +16799,8 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
                 FATAL_GC_ERROR();
             }
 
-            dprintf (2, ("clearing memory before used at %p for %zd bytes", clear_start, used - clear_start));
+            //dprintf (6666, ("clearing memory before used at %p for %zd bytes", clear_start, used - clear_start));
+            dprintf (6666, ("%zd bytes", used - clear_start));
             memset_cleared += used - clear_start;
             memclr (clear_start, used - clear_start);
         }
