@@ -505,6 +505,7 @@ void GCLogConfig (const char *fmt, ... )
 
 void GCHeap::Shutdown()
 {
+    printf ("Membytes Cleared:%zu\n", memset_cleared);
     // This does not work for standalone GC on Windows because windows closed the file
     // handle in DllMain for the standalone GC before we get here.
 #if defined(TRACE_GC) && defined(SIMPLE_DPRINTF) && !defined(BUILD_AS_STANDALONE)
