@@ -15249,6 +15249,7 @@ gc_heap::destroy_gc_heap(gc_heap* heap)
 // the finalizer queue has been drained.
 void gc_heap::shutdown_gc()
 {
+    printf ("Membytes Cleared:%zu\n", memset_cleared);
     destroy_semi_shared();
 
 #ifdef MULTIPLE_HEAPS
