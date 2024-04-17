@@ -3788,6 +3788,7 @@ private:
 
     PER_HEAP_FIELD_ALLOC size_t soh_allocation_no_gc;
     PER_HEAP_FIELD_ALLOC size_t loh_allocation_no_gc;
+    PER_HEAP_FIELD_SINGLE_GC_ALLOC size_t membytes_cleared;
 
 #ifdef MULTIPLE_HEAPS
 #else //MULTIPLE_HEAPS

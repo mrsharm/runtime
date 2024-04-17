@@ -116,6 +116,8 @@ uint8_t g_build_variant = 1;
 uint8_t g_build_variant = 2;
 #endif //BUILDENV_DEBUG
 
+static size_t memset_cleared = 0;
+
 VOLATILE(int32_t) g_no_gc_lock = -1;
 
 #ifdef TRACE_GC
@@ -16774,6 +16776,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
         if (clear_start < clear_limit)
         {
             dprintf(3, ("clearing memory at %p for %zd bytes", clear_start, clear_limit - clear_start));
+            memset_cleared += clear_limit - clear_start;
             memclr(clear_start, clear_limit - clear_start);
         }
     }
@@ -16794,6 +16797,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
             }
 
             dprintf (2, ("clearing memory before used at %p for %zd bytes", clear_start, used - clear_start));
+            memset_cleared += used - clear_start;
             memclr (clear_start, used - clear_start);
         }
     }
@@ -48251,6 +48255,7 @@ void GCHeap::ValidateObjectMember (Object* obj)
 
 HRESULT GCHeap::StaticShutdown()
 {
+    printf ("Membytes Cleared:%zu\n", memset_cleared);
     deleteGCShadow();
 
     GCScan::GcRuntimeStructuresValid (FALSE);
