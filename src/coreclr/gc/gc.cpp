@@ -116,8 +116,6 @@ uint8_t g_build_variant = 1;
 uint8_t g_build_variant = 2;
 #endif //BUILDENV_DEBUG
 
-static size_t memset_cleared = 0;
-
 VOLATILE(int32_t) g_no_gc_lock = -1;
 
 #ifdef TRACE_GC
@@ -310,6 +308,9 @@ double gc_heap::bgc_tuning::ratio_correction_step = 0.0;
 
 int gc_heap::saved_bgc_tuning_reason = -1;
 #endif //BGC_SERVO_TUNING
+
+uint64_t gc_heap::limit_size_total = 0;
+uint64_t gc_heap::cleared_bytes_total = 0;
 
 inline
 size_t round_up_power2 (size_t size)
@@ -505,7 +506,6 @@ void GCLogConfig (const char *fmt, ... )
 
 void GCHeap::Shutdown()
 {
-    printf ("Membytes Cleared:%zu\n", memset_cleared);
     // This does not work for standalone GC on Windows because windows closed the file
     // handle in DllMain for the standalone GC before we get here.
 #if defined(TRACE_GC) && defined(SIMPLE_DPRINTF) && !defined(BUILD_AS_STANDALONE)
@@ -15249,7 +15249,6 @@ gc_heap::destroy_gc_heap(gc_heap* heap)
 // the finalizer queue has been drained.
 void gc_heap::shutdown_gc()
 {
-    printf ("Membytes Cleared:%zu\n", memset_cleared);
     destroy_semi_shared();
 
 #ifdef MULTIPLE_HEAPS
@@ -16769,6 +16768,9 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
     }
 #endif //BACKGROUND_GC
 
+    // sum up limit_size
+    limit_size_total += limit_size;
+
     // check if space to clear is all dirty from prior use or only partially
     if ((seg == 0) || (clear_limit <= heap_segment_used (seg)))
     {
@@ -16779,7 +16781,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
         {
             //dprintf(6666, ("clearing memory at %p for %zd bytes", clear_start, clear_limit - clear_start));
             dprintf(6666, ("%zd bytes", clear_limit - clear_start));
-            memset_cleared += clear_limit - clear_start;
+            cleared_bytes_total += clear_limit - clear_start;
             memclr(clear_start, clear_limit - clear_start);
         }
     }
@@ -16801,7 +16803,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
 
             //dprintf (6666, ("clearing memory before used at %p for %zd bytes", clear_start, used - clear_start));
             dprintf (6666, ("%zd bytes", used - clear_start));
-            memset_cleared += used - clear_start;
+            cleared_bytes_total += used - clear_start;
             memclr (clear_start, used - clear_start);
         }
     }
@@ -48259,7 +48261,6 @@ void GCHeap::ValidateObjectMember (Object* obj)
 
 HRESULT GCHeap::StaticShutdown()
 {
-    printf ("Membytes Cleared:%zu\n", memset_cleared);
     deleteGCShadow();
 
     GCScan::GcRuntimeStructuresValid (FALSE);
@@ -51049,6 +51050,7 @@ int64_t GCHeap::GetTotalPauseDuration()
 
 void GCHeap::EnumerateConfigurationValues(void* context, ConfigurationValueFunc configurationValueFunc)
 {
+    printf ( "Ratio of Total Memory Cleared (%zu) / Total Limit Size (%zu): %f", gc_heap::cleared_bytes_total, gc_heap::limit_size_total, ((double)gc_heap::cleared_bytes_total / gc_heap::limit_size_total));
     GCConfig::EnumerateConfigurationValues(context, configurationValueFunc);
 }
 

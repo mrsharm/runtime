@@ -4551,6 +4551,9 @@ private:
 #endif //BGC_SERVO_TUNING
 #endif //BACKGROUND_GC
 
+    PER_HEAP_ISOLATED_FIELD uint64_t limit_size_total;
+    PER_HEAP_ISOLATED_FIELD uint64_t cleared_bytes_total;
+
     PER_HEAP_ISOLATED_FIELD_INIT_ONLY uint8_t* bookkeeping_start;
 #ifdef USE_REGIONS
     PER_HEAP_ISOLATED_FIELD_INIT_ONLY size_t regions_range;
