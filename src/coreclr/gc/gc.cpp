@@ -16770,7 +16770,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
 #endif //BACKGROUND_GC
 
     // sum up limit_size
-    Interlocked::ExchangeAdd64((uint64_t*)(&limit_size_total), (uint64_t)limit_size);
+    Interlocked::ExchangeAdd64(&limit_size_total, (uint64_t)limit_size);
     Interlocked::ExchangeAdd64(&memset_count, (uint64_t)1);
 
     // check if space to clear is all dirty from prior use or only partially
@@ -16783,7 +16783,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
         {
             //dprintf(6666, ("clearing memory at %p for %zd bytes", clear_start, clear_limit - clear_start));
             dprintf(6666, ("%zd bytes", clear_limit - clear_start));
-            Interlocked::ExchangeAdd64((uint64_t*)(&cleared_bytes_total), (uint64_t)(clear_limit - clear_start));
+            Interlocked::ExchangeAdd64((&cleared_bytes_total), (uint64_t)(clear_limit - clear_start));
             memclr(clear_start, clear_limit - clear_start);
         }
     }
@@ -16805,7 +16805,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
 
             //dprintf (6666, ("clearing memory before used at %p for %zd bytes", clear_start, used - clear_start));
             dprintf (6666, ("%zd bytes", used - clear_start));
-            Interlocked::ExchangeAdd64((uint64_t*)(&cleared_bytes_total), (uint64_t)(used - clear_start));
+            Interlocked::ExchangeAdd64((&cleared_bytes_total), (uint64_t)(used - clear_start));
             memclr (clear_start, used - clear_start);
         }
     }
