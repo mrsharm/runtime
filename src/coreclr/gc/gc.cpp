@@ -309,9 +309,9 @@ double gc_heap::bgc_tuning::ratio_correction_step = 0.0;
 int gc_heap::saved_bgc_tuning_reason = -1;
 #endif //BGC_SERVO_TUNING
 
-uint64_t limit_size_total = 0;
-uint64_t cleared_bytes_total = 0;
-uint64_t memset_count = 0;
+static uint64_t limit_size_total = 0;
+static uint64_t cleared_bytes_total = 0;
+static uint64_t memset_count = 0;
 
 inline
 size_t round_up_power2 (size_t size)
@@ -16782,7 +16782,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
         if (clear_start < clear_limit)
         {
             //dprintf(6666, ("clearing memory at %p for %zd bytes", clear_start, clear_limit - clear_start));
-            dprintf(6666, ("%zd bytes", clear_limit - clear_start));
+            dprintf(6666, ("%zu bytes", clear_limit - clear_start));
             Interlocked::ExchangeAdd64((&cleared_bytes_total), (uint64_t)(clear_limit - clear_start));
             memclr(clear_start, clear_limit - clear_start);
         }
@@ -16804,7 +16804,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
             }
 
             //dprintf (6666, ("clearing memory before used at %p for %zd bytes", clear_start, used - clear_start));
-            dprintf (6666, ("%zd bytes", used - clear_start));
+            dprintf (6666, ("%zu bytes", used - clear_start));
             Interlocked::ExchangeAdd64((&cleared_bytes_total), (uint64_t)(used - clear_start));
             memclr (clear_start, used - clear_start);
         }
@@ -16813,7 +16813,7 @@ void gc_heap::adjust_limit_clr (uint8_t* start, size_t limit_size, size_t size,
 #ifdef FEATURE_EVENT_TRACE
     if (fire_event_p)
     {
-        fire_etw_allocation_event (etw_allocation_amount, gen_number, acontext->alloc_ptr, size);
+        //fire_etw_allocation_event (etw_allocation_amount, gen_number, acontext->alloc_ptr, size);
     }
 #endif //FEATURE_EVENT_TRACE
 
