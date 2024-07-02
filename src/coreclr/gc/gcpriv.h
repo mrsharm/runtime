@@ -5870,6 +5870,10 @@ size_t generation_unusable_fragmentation (generation* inst)
 {
     // Use integer division to prevent potential floating point exception.
     // FPE may occur if we use floating point division because of speculative execution.
+
+    // Right after a gen1/gen2 GC, free_list_allocated = 0 => bad unusable fragmentation.
+    // The condemned alloc shouldn't contribute to the efficiency of the free list since
+    // there is no free list built i.e., after gen1 / gen2, there is no free list.
     uint64_t free_obj_space = generation_free_obj_space (inst);
     uint64_t free_list_allocated = generation_free_list_allocated (inst);
     uint64_t free_list_space = generation_free_list_space (inst);

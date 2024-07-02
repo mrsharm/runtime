@@ -3326,6 +3326,7 @@ gc_heap::dt_high_frag_p (gc_tuning_point tp,
                     }
                 }
 #endif //!MULTIPLE_HEAPS
+                // Culprit => Many Gen1s in a row.
                 size_t fr = generation_unusable_fragmentation (generation_of (gen_number));
                 ret = (fr > dd_fragmentation_limit(dd));
                 if (ret)
@@ -21518,6 +21519,8 @@ int gc_heap::generation_to_condemn (int n_initial,
     temp_gen = n;
     for (i = n+1; i < max_generation; i++)
     {
+        // If true => i = 1. If n != 0 => (n + 1) = 1.
+        // Then do a Gen1 GC.
         if (dt_high_frag_p (tuning_deciding_condemned_gen, i))
         {
             dprintf (GTC_LOG, ("h%d g%d too frag", heap_number, i));
@@ -21535,6 +21538,7 @@ int gc_heap::generation_to_condemn (int n_initial,
 
     if (n > temp_gen)
     {
+        // Due to high frag if.
         local_condemn_reasons->set_condition (gen_eph_high_frag_p);
     }
 
@@ -22121,6 +22125,15 @@ void gc_heap::update_end_gc_time_per_heap()
                 (uint32_t)sample.gc_pause_time,
                 (uint32_t)soh_msl_wait_time, (uint32_t)uoh_msl_wait_time,
                 (uint64_t)total_soh_stable_size, (uint32_t)sample.gen0_budget_per_heap);
+
+            dprintf (6667, ("SizeAdaptationSample: gc_index=%llu, elapsed_between_gcs=%u, gc_pause_time=%u, soh_msl_wait_time=%u, uoh_msl_wait_time=%u, total_soh_stable_size=%llu, gen0_budget_per_heap=%u",
+                (uint64_t)gc_index,
+                (uint32_t)sample.elapsed_between_gcs,
+                (uint32_t)sample.gc_pause_time,
+                (uint32_t)soh_msl_wait_time,
+                (uint32_t)uoh_msl_wait_time,
+                (uint64_t)total_soh_stable_size,
+                (uint32_t)sample.gen0_budget_per_heap));
 
             dynamic_heap_count_data.sample_index = (dynamic_heap_count_data.sample_index + 1) % dynamic_heap_count_data_t::sample_size;
             (dynamic_heap_count_data.current_samples_count)++;
@@ -25585,6 +25598,11 @@ void gc_heap::calculate_new_heap_count ()
             (uint16_t)hc_change_freq_factor,
             (uint16_t)hc_freq_reason,
             (uint8_t)adj_metric);
+
+            dprintf(6667, ("SizeAdaptationTuning: new_n_heaps: %d, max_heap_count_datas: %d, min_heap_count_datas: %d, current_gc_index: %llu, total_soh_stable_size: %llu, median_throughput_cost_percent: %.2f, tcp_to_consider: %.3f, current_around_target_accumulation: %.3f, recorded_tcp_count: %d, recorded_tcp_slope: %.3f, num_gcs_since_last_change: %d, agg_factor: %d, change_decision: %d, adj_reason: %d, hc_change_freq_factor: %d, hc_freq_reason: %d, adj_metric: %d\n",
+        new_n_heaps, max_heap_count_datas, min_heap_count_datas, current_gc_index, total_soh_stable_size, median_throughput_cost_percent,
+        tcp_to_consider, current_around_target_accumulation, recorded_tcp_count, recorded_tcp_slope, num_gcs_since_last_change,
+        agg_factor, change_decision, adj_reason, hc_change_freq_factor, hc_freq_reason, adj_metric));
     }
 
     size_t num_gen2s_since_last_change = 0;
@@ -25652,8 +25670,20 @@ void gc_heap::calculate_new_heap_count ()
             (float)gen2_samples[1].gc_percent,
             (uint32_t)(current_gc_index - gen2_samples[2].gc_index),
             (float)gen2_samples[2].gc_percent);
+                dprintf(6667, ("SizeAdaptationFullGCTuning: new_n_heaps: %d, current_gc_index: %llu, median_gen2_tcp: %.3f, num_gen2s_since_last_change: %d, gc_index_diff_0: %d, gc_percent_0: %.3f, gc_index_diff_1: %d, gc_percent_1: %.3f, gc_index_diff_2: %d, gc_percent_2: %.3f\n",
+        dynamic_heap_count_data.new_n_heaps,
+        current_gc_index,
+        median_gen2_tcp,
+        num_gen2s_since_last_change,
+        current_gc_index - gen2_samples[0].gc_index,
+        gen2_samples[0].gc_percent,
+        current_gc_index - gen2_samples[1].gc_index,
+        gen2_samples[1].gc_percent,
+        current_gc_index - gen2_samples[2].gc_index,
+        gen2_samples[2].gc_percent));
 
-        dprintf (6666, ("processed gen2 samples, updating processed %Id -> %Id", dynamic_heap_count_data.processed_gen2_samples_count, dynamic_heap_count_data.current_gen2_samples_count));
+
+        dprintf (6667, ("processed gen2 samples, updating processed %Id -> %Id", dynamic_heap_count_data.processed_gen2_samples_count, dynamic_heap_count_data.current_gen2_samples_count));
         dynamic_heap_count_data.processed_gen2_samples_count = dynamic_heap_count_data.current_gen2_samples_count;
     }
 
