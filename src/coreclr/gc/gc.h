@@ -378,7 +378,11 @@ inline bool IsServerHeap()
 HRESULT initialize_log_file();
 void flush_gc_log (bool);
 void GCLog (const char *fmt, ... );
+<<<<<<< Updated upstream
 #define dprintf(l,x) {if ((l == 6667)) {GCLog x;}}
+=======
+#define dprintf(l,x) {if ((l == 6666)) {GCLog x;}}
+>>>>>>> Stashed changes
 #else //SIMPLE_DPRINTF
 #ifdef HOST_64BIT
 #define dprintf(l,x) STRESS_LOG_VA(l,x);
