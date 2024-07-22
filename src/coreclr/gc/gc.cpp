@@ -20964,7 +20964,10 @@ int gc_heap::joined_generation_to_condemn (BOOL should_evaluate_elevation,
             // trigger_bgc_for_rethreading_p being true indicates we did not change gen2 FL items when we changed HC.
             // So some heaps could have no FL at all which means if we did a gen1 GC during this BGC we would increase
             // gen2 size. We chose to prioritize not increasing gen2 size so we disallow gen1 GCs.
-            n = 0;
+            if (n != 0)
+            {
+                n = 0;
+            }
         }
         else
         {
@@ -50015,7 +50018,7 @@ void gc_heap::do_pre_gc()
 #ifdef TRACE_GC
     size_t total_allocated_since_last_gc = get_total_allocated_since_last_gc();
 #ifdef BACKGROUND_GC
-    dprintf (1, (ThreadStressLog::gcDetailedStartMsg(),
+    dprintf (6666, (ThreadStressLog::gcDetailedStartMsg(),
         VolatileLoad(&settings.gc_index),
         dd_collection_count (hp->dynamic_data_of (0)),
         settings.condemned_generation,
@@ -50024,7 +50027,7 @@ void gc_heap::do_pre_gc()
         settings.b_state,
         n_heaps));
 #else
-    dprintf (1, ("*GC* %d(gen0:%d)(%d)(alloc: %zd)",
+    dprintf (6666, ("*GC* %d(gen0:%d)(%d)(alloc: %zd)",
         VolatileLoad(&settings.gc_index),
         dd_collection_count(hp->dynamic_data_of(0)),
         settings.condemned_generation,
@@ -50433,7 +50436,7 @@ void gc_heap::do_post_gc()
             gen3_virtual_fl_size = (ptrdiff_t)(total_virtual_fl_size * (1.0 - gen2_size_ratio));
 
 #ifdef SIMPLE_DPRINTF
-            dprintf (BGC_TUNING_LOG, ("BTL: ml: %d (g: %d)(%s), a: %zd (g: %zd, elg: %zd+%zd=%zd, %zd+%zd=%zd), vfl: %zd=%zd+%zd(NGC2)",
+            dprintf (6666, ("BTL: ml: %d (g: %d)(%s), a: %zd (g: %zd, elg: %zd+%zd=%zd, %zd+%zd=%zd), vfl: %zd=%zd+%zd(NGC2)",
                 current_memory_load, bgc_tuning::memory_load_goal,
                 ((current_available_physical > bgc_tuning::available_memory_goal) ? "above" : "below"),
                 current_available_physical, bgc_tuning::available_memory_goal,
@@ -50454,7 +50457,7 @@ void gc_heap::do_post_gc()
     const char* str_gc_type = "NGC";
 #endif //BACKGROUND_GC
 
-    dprintf (1, (ThreadStressLog::gcDetailedEndMsg(),
+    dprintf (6666, (ThreadStressLog::gcDetailedEndMsg(),
         VolatileLoad (&settings.gc_index),
         dd_collection_count (hp->dynamic_data_of (0)),
         (size_t)(GetHighPrecisionTimeStamp () / 1000),
@@ -50533,7 +50536,7 @@ void gc_heap::do_post_gc()
     if (heap_hard_limit)
     {
         size_t total_heap_committed_recorded = current_total_committed - current_total_committed_bookkeeping;
-        dprintf (1, ("(%d)GC commit END #%zd: %zd (recorded: %zd=%zd-%zd), heap %zd, frag: %zd",
+        dprintf (6666, ("(%d)GC commit END #%zd: %zd (recorded: %zd=%zd-%zd), heap %zd, frag: %zd",
             settings.condemned_generation,
             (size_t)settings.gc_index, total_heap_committed, total_heap_committed_recorded,
             current_total_committed, current_total_committed_bookkeeping,
@@ -50555,7 +50558,7 @@ void gc_heap::do_post_gc()
                 {
                     provisional_mode_triggered = false;
                     provisional_off_gc_count = full_compacting_gc_count;
-                    dprintf (GTC_LOG, ("%zd NGC2s when turned on, %zd NGCs since(%zd)",
+                    dprintf (6666, ("%zd NGC2s when turned on, %zd NGCs since(%zd)",
                         provisional_triggered_gc_count, (full_compacting_gc_count - provisional_triggered_gc_count),
                         num_provisional_triggered));
                 }
@@ -50568,7 +50571,7 @@ void gc_heap::do_post_gc()
                     provisional_mode_triggered = true;
                     provisional_triggered_gc_count = full_compacting_gc_count;
                     num_provisional_triggered++;
-                    dprintf (GTC_LOG, ("%zd NGC2s when turned off, %zd NGCs since(%zd)",
+                    dprintf (6666, ("%zd NGC2s when turned off, %zd NGCs since(%zd)",
                         provisional_off_gc_count, (full_compacting_gc_count - provisional_off_gc_count),
                         num_provisional_triggered));
                 }
@@ -50581,13 +50584,13 @@ void gc_heap::do_post_gc()
                 if ((settings.entry_memory_load < high_memory_load_th) ||
                     !is_pm_ratio_exceeded())
                 {
-                    dprintf (GTC_LOG, ("turning off PM"));
+                    dprintf (6666, ("turning off PM"));
                     provisional_mode_triggered = false;
                 }
             }
             else if ((settings.entry_memory_load >= high_memory_load_th) && is_pm_ratio_exceeded())
             {
-                dprintf (GTC_LOG, ("highmem && highfrag - turning on PM"));
+                dprintf (6666, ("highmem && highfrag - turning on PM"));
                 provisional_mode_triggered = true;
                 num_provisional_triggered++;
             }
