@@ -48803,7 +48803,7 @@ size_t GCHeap::GetPromotedBytes(int heap_index)
 
 void GCHeap::SetYieldProcessorScalingFactor (float scalingFactor)
 {
-    if (!gc_heap::spin_count_unit_config_p)
+    //if (!gc_heap::spin_count_unit_config_p)
     {
         assert (yp_spin_count_unit != 0);
         uint32_t saved_yp_spin_count_unit = yp_spin_count_unit;
