@@ -2372,6 +2372,10 @@ double      gc_heap::short_plugs_pad_ratio = 0;
 
 int         gc_heap::generation_skip_ratio_threshold = 0;
 int         gc_heap::conserve_mem_setting = 0;
+
+#if (defined(MULTIPLE_HEAPS) && defined(DYNAMIC_HEAP_COUNT))
+int         gc_heap::datas_conserve_mem_setting = 0;
+#endif // (MULTIPLE_HEAPS && DYNAMIC_HEAP_COUNT)
 bool        gc_heap::spin_count_unit_config_p = false;
 
 uint64_t    gc_heap::suspended_start_time = 0;
@@ -14171,8 +14175,13 @@ HRESULT gc_heap::initialize_gc (size_t soh_segment_size,
         dynamic_adaptation_mode = 0;
     }
 
-    if ((dynamic_adaptation_mode == dynamic_adaptation_to_application_sizes) && (conserve_mem_setting == 0))
-        conserve_mem_setting = 5;
+    if (dynamic_adaptation_mode == dynamic_adaptation_to_application_sizes) 
+    {
+        if (conserve_mem_setting == 0)
+        {
+            conserve_mem_setting = 5;
+        }
+    }
 #endif //DYNAMIC_HEAP_COUNT
 
     if (conserve_mem_setting < 0)

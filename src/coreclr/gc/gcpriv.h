@@ -5230,6 +5230,7 @@ private:
 
 #ifdef DYNAMIC_HEAP_COUNT
     PER_HEAP_ISOLATED_FIELD_INIT_ONLY int dynamic_adaptation_mode;
+    PER_HEAP_ISOLATED_FIELD_INIT_ONLY int datas_conserve_mem_setting;
 #endif //DYNAMIC_HEAP_COUNT
 
     /********************************************/
