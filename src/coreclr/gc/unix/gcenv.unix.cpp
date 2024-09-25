@@ -804,18 +804,22 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
     // UPDATE_CACHE_SIZE_AND_LEVEL should handle both the cases by not updating cacheSize if either of cases are met.
 #ifdef _SC_LEVEL1_DCACHE_SIZE
     size = sysconf(_SC_LEVEL1_DCACHE_SIZE);
+    printf ("[GetLogicalProcessorCacheSizeFromOS] _SC_LEVEL1_DCACHE_SIZE: %ld\n", size);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 1)
 #endif
 #ifdef _SC_LEVEL2_CACHE_SIZE
     size = sysconf(_SC_LEVEL2_CACHE_SIZE);
+    printf ("[GetLogicalProcessorCacheSizeFromOS] _SC_LEVEL2_DCACHE_SIZE: %ld\n", size);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 2)
 #endif
 #ifdef _SC_LEVEL3_CACHE_SIZE
     size = sysconf(_SC_LEVEL3_CACHE_SIZE);
+    printf ("[GetLogicalProcessorCacheSizeFromOS] _SC_LEVEL3_DCACHE_SIZE: %ld\n", size);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 3)
 #endif
 #ifdef _SC_LEVEL4_CACHE_SIZE
     size = sysconf(_SC_LEVEL4_CACHE_SIZE);
+    printf ("[GetLogicalProcessorCacheSizeFromOS] _SC_LEVEL4_DCACHE_SIZE: %ld\n", size);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 4)
 #endif
 
@@ -1018,7 +1022,7 @@ size_t GCToOSInterface::GetCacheSizePerLogicalCpu(bool trueSize)
     s_maxSize = maxSize;
     s_maxTrueSize = maxTrueSize;
 
-    // printf("GetCacheSizePerLogicalCpu returns %zu, adjusted size %zu\n", maxSize, maxTrueSize);
+    printf("[GetCacheSizePerLogicalCpu]: GetCacheSizePerLogicalCpu returns %zu, adjusted size %zu\n", maxSize, maxTrueSize);
     return trueSize ? maxTrueSize : maxSize;
 }
 

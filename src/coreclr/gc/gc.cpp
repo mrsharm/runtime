@@ -43105,7 +43105,9 @@ void gc_heap::init_static_data()
         );
 #endif //MULTIPLE_HEAPS
 
+    printf ("0. [init_static_data]: Initial gen0_min_size = %zd | gen0_max_size = %zd\n", gen0_min_size, gen0_max_size);
     gen0_max_size = max (gen0_min_size, gen0_max_size);
+    printf ("1. [init_static_data]: Gen0Sizes Post Maxing gen0_max_size: gen0_min_size = %zd | gen0_max_size = %zd\n", gen0_min_size, gen0_max_size);
 
     if (heap_hard_limit)
     {
@@ -43127,6 +43129,7 @@ void gc_heap::init_static_data()
 
     gen0_max_size = Align (gen0_max_size);
     gen0_min_size = min (gen0_min_size, gen0_max_size);
+    printf ("2. [init_static_data]: Post alignment gen0_min_size = %zd | gen0_max_size = %zd\n", gen0_min_size, gen0_max_size);
 
     // TODO: gen0_max_size has a 200mb cap; gen1_max_size should also have a cap.
     size_t gen1_max_size = (size_t)
@@ -43153,6 +43156,8 @@ void gc_heap::init_static_data()
 
     dprintf (GTC_LOG, ("gen0 min: %zd, max: %zd, gen1 max: %zd",
         gen0_min_size, gen0_max_size, gen1_max_size));
+    printf ("3. [init_static_data]: Final gen0 min: %zd, max: %zd, gen1 max: %zd",
+        gen0_min_size, gen0_max_size, gen1_max_size);
 
     for (int i = latency_level_first; i <= latency_level_last; i++)
     {
@@ -51111,8 +51116,10 @@ size_t gc_heap::get_gen0_min_size()
         int n_heaps = gc_heap::n_heaps;
 #else //SERVER_GC
         size_t trueSize = GCToOSInterface::GetCacheSizePerLogicalCpu(TRUE);
+        printf ("1. [get_gen0_min_size] trueSize from GetCacheSizePerLogicalCpu: %zd\n", trueSize);
         gen0size = max((4*trueSize/5),(256*1024));
         trueSize = max(trueSize, (256*1024));
+        printf ("2. [get_gen0_min_size] trueSize (%zd) gen0size: (%zd)\n", trueSize, gen0size);
         int n_heaps = 1;
 #endif //SERVER_GC
 
@@ -51128,6 +51135,11 @@ size_t gc_heap::get_gen0_min_size()
                 gen0size, n_heaps, (gen0size * n_heaps),
                 gc_heap::total_physical_mem,
                 gc_heap::total_physical_mem / 6));
+        printf ("3. [get_gen0_min_size] gen0size: %zd * %d = %zd, physical mem: %zd / 6 = %zd\n",
+                gen0size, n_heaps, (gen0size * n_heaps),
+                gc_heap::total_physical_mem,
+                gc_heap::total_physical_mem / 6);
+
 
         // if the total min GC across heaps will exceed 1/6th of available memory,
         // then reduce the min GC size until it either fits or has been reduced to cache size.
@@ -51137,6 +51149,7 @@ size_t gc_heap::get_gen0_min_size()
             if (gen0size <= trueSize)
             {
                 gen0size = trueSize;
+                printf ("4. [get_gen0_min_size] gen0size (%zd) reduced since total min GC across heaps will exceed 1/6th of available memory\n", gen0size); 
                 break;
             }
         }
@@ -51180,6 +51193,7 @@ size_t gc_heap::get_gen0_min_size()
 #endif //USE_REGIONS
 
     gen0size = Align (gen0size);
+    printf ("5. [get_gen0_min_size] Aligned gen0 Size: %zd\n", gen0size);
 
     return gen0size;
 }
