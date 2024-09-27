@@ -43105,7 +43105,9 @@ void gc_heap::init_static_data()
         );
 #endif //MULTIPLE_HEAPS
 
-    printf ("0. [init_static_data]: Initial gen0_min_size = %zd | gen0_max_size = %zd\n", gen0_min_size, gen0_max_size);
+    printf ("0.0.1 [init_static_data]: soh_segment_size = %zd | Align(soh_segment_size / 2) = %zd \n", soh_segment_size, Align( soh_segment_size / 2));
+    printf ("0.0.2 [init_static_data]: min( Align( soh_segment_size / 2), 200* 1024 * 1024) = %zd | max(6*1024*1024, min( Align( soh_segment_size / 2), 200* 1024 * 1024)) = %zd\n", min( Align( soh_segment_size / 2), 200* 1024 * 1024), max(6*1024*1024, min( Align( soh_segment_size / 2), 200* 1024 * 1024)));
+    printf ("0.2 [init_static_data]: Initial gen0_min_size = %zd | gen0_max_size = %zd\n", gen0_min_size, gen0_max_size);
     gen0_max_size = max (gen0_min_size, gen0_max_size);
     printf ("1. [init_static_data]: Gen0Sizes Post Maxing gen0_max_size: gen0_min_size = %zd | gen0_max_size = %zd\n", gen0_min_size, gen0_max_size);
 
