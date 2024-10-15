@@ -793,13 +793,8 @@ done:
 }
 
 #define UPDATE_CACHE_SIZE_AND_LEVEL(NEW_CACHE_SIZE, NEW_CACHE_LEVEL) if (NEW_CACHE_SIZE > ((long)cacheSize)) { cacheSize = NEW_CACHE_SIZE; cacheLevel = NEW_CACHE_LEVEL; }
-
-static size_t GetLogicalProcessorCacheSizeFromOS()
+static void GetLogicalProcessorCacheSizeFromSysConf(size_t& cacheSize, size_t& cacheLevel)
 {
-    size_t cacheLevel = 0;
-    size_t cacheSize = 0;
-    long size;
-
     // sysconf can return -1 if the cache size is unavailable in some distributions and 0 in others.
     // UPDATE_CACHE_SIZE_AND_LEVEL should handle both the cases by not updating cacheSize if either of cases are met.
 #ifdef _SC_LEVEL1_DCACHE_SIZE
@@ -822,47 +817,76 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
     printf ("[GetLogicalProcessorCacheSizeFromOS] _SC_LEVEL4_DCACHE_SIZE: %ld\n", size);
     UPDATE_CACHE_SIZE_AND_LEVEL(size, 4)
 #endif
+}
 
-#if defined(TARGET_LINUX) && !defined(HOST_ARM) && !defined(HOST_X86)
-    if (cacheSize == 0)
+static void GetLogicalProcessorCacheSizeFromSysFs(size_t& cacheSize, size_t& cacheLevel)
+{
+    size_t level;
+    char path_to_size_file[] =  "/sys/devices/system/cpu/cpu0/cache/index-/size";
+    char path_to_level_file[] =  "/sys/devices/system/cpu/cpu0/cache/index-/level";
+    int index = 40;
+    assert(path_to_size_file[index] == '-');
+    assert(path_to_level_file[index] == '-');
+
+    for (int i = 0; i < 5; i++)
     {
-        //
-        // Fallback to retrieve cachesize via /sys/.. if sysconf was not available
-        // for the platform. Currently musl and arm64 should be only cases to use
-        // this method to determine cache size.
-        //
-        size_t level;
-        char path_to_size_file[] =  "/sys/devices/system/cpu/cpu0/cache/index-/size";
-        char path_to_level_file[] =  "/sys/devices/system/cpu/cpu0/cache/index-/level";
-        int index = 40;
-        assert(path_to_size_file[index] == '-');
-        assert(path_to_level_file[index] == '-');
+        path_to_size_file[index] = (char)(48 + i);
 
-        for (int i = 0; i < 5; i++)
+        uint64_t cache_size_from_sys_file = 0;
+
+        if (ReadMemoryValueFromFile(path_to_size_file, &cache_size_from_sys_file))
         {
-            path_to_size_file[index] = (char)(48 + i);
+            // uint64_t to long conversion as ReadMemoryValueFromFile takes a uint64_t* as an argument for the val argument.
+            size = (long)cache_size_from_sys_file;
+            path_to_level_file[index] = (char)(48 + i);
 
-            uint64_t cache_size_from_sys_file = 0;
-
-            if (ReadMemoryValueFromFile(path_to_size_file, &cache_size_from_sys_file))
+            if (ReadMemoryValueFromFile(path_to_level_file, &level))
             {
-                // uint64_t to long conversion as ReadMemoryValueFromFile takes a uint64_t* as an argument for the val argument.
-                size = (long)cache_size_from_sys_file;
-                path_to_level_file[index] = (char)(48 + i);
+                UPDATE_CACHE_SIZE_AND_LEVEL(size, level)
+            }
 
-                if (ReadMemoryValueFromFile(path_to_level_file, &level))
-                {
-                    UPDATE_CACHE_SIZE_AND_LEVEL(size, level)
-                }
-
-                else
-                {
-                    cacheSize = std::max((long)cacheSize, size);
-                }
+            else
+            {
+                cacheSize = std::max((long)cacheSize, size);
             }
         }
     }
-#endif
+}
+
+static void GetLogicalProcessorCacheSizeFromHeuristic(size_t cacheSize, size_t cacheLevel)
+{
+    DWORD logicalCPUs = g_processAffinitySet.Count();
+    if (logicalCPUs < 5)
+    {
+        cacheSize = 4;
+    }
+    else if (logicalCPUs < 17)
+    {
+        cacheSize = 8;
+    }
+    else if (logicalCPUs < 65)
+    {
+        cacheSize = 16;
+    }
+    else
+    {
+        cacheSize = 32;
+    }
+
+    cacheSize *= (1024 * 1024);
+}
+
+static size_t GetLogicalProcessorCacheSizeFromOS()
+{
+    size_t cacheLevel = 0;
+    size_t cacheSize = 0;
+    long size;
+    
+    GetLogicalProcessorCacheSizeFromSysFs(cacheSize, cacheLevel);
+    if (cacheSize == 0)
+    {
+        GetLogicalProcessorCacheSizeFromHeuristic(cacheSize, cacheLevel);
+    }
 
 #if (defined(HOST_ARM64) || defined(HOST_LOONGARCH64)) && !defined(TARGET_APPLE)
     if (cacheSize == 0)
