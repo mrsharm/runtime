@@ -795,7 +795,7 @@ done:
 }
 
 #define UPDATE_CACHE_SIZE_AND_LEVEL(NEW_CACHE_SIZE, NEW_CACHE_LEVEL) if (NEW_CACHE_SIZE > ((long)cacheSize)) { cacheSize = NEW_CACHE_SIZE; cacheLevel = NEW_CACHE_LEVEL; }
-static void GetLogicalProcessorCacheSizeFromSysConf(size_t& cacheSize, size_t& cacheLevel)
+static void GetLogicalProcessorCacheSizeFromSysConf(size_t* cacheLevel, size_t* cacheSize)
 {
     long size;
     // sysconf can return -1 if the cache size is unavailable in some distributions and 0 in others.
@@ -896,7 +896,6 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
 {
     size_t cacheLevel = 0;
     size_t cacheSize = 0;
-    long size;
 
     if (GCConfig::GetGCCacheSizeFromSysConf())
     {
@@ -911,7 +910,6 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
             GetLogicalProcessorCacheSizeFromHeuristic(&cacheLevel, &cacheSize);
         }
     }
-
 
 #if (defined(HOST_ARM64) || defined(HOST_LOONGARCH64)) && !defined(TARGET_APPLE)
     if (cacheSize == 0)
@@ -966,32 +964,7 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
 #if (defined(HOST_ARM64) || defined(HOST_LOONGARCH64)) && !defined(TARGET_APPLE)
     if (cacheLevel != 3)
     {
-        // We expect to get the L3 cache size for Arm64 but currently expected to be missing that info
-        // from most of the machines.
-        // Hence, just use the following heuristics at best depending on the CPU count
-        // 1 ~ 4   :  4 MB
-        // 5 ~ 16  :  8 MB
-        // 17 ~ 64 : 16 MB
-        // 65+     : 32 MB
-        DWORD logicalCPUs = g_processAffinitySet.Count();
-        if (logicalCPUs < 5)
-        {
-            cacheSize = 4;
-        }
-        else if (logicalCPUs < 17)
-        {
-            cacheSize = 8;
-        }
-        else if (logicalCPUs < 65)
-        {
-            cacheSize = 16;
-        }
-        else
-        {
-            cacheSize = 32;
-        }
-
-        cacheSize *= (1024 * 1024);
+        GetLogicalProcessorCacheSizeFromHeuristic(&cacheLevel, &cacheSize);
     }
 #endif
 
