@@ -794,7 +794,7 @@ done:
     return result;
 }
 
-#define UPDATE_CACHE_SIZE_AND_LEVEL(NEW_CACHE_SIZE, NEW_CACHE_LEVEL) if (NEW_CACHE_SIZE > ((long)cacheSize)) { cacheSize = NEW_CACHE_SIZE; cacheLevel = NEW_CACHE_LEVEL; }
+#define UPDATE_CACHE_SIZE_AND_LEVEL(NEW_CACHE_SIZE, NEW_CACHE_LEVEL) if (NEW_CACHE_SIZE > ((long)cacheSize)) { *cacheSize = NEW_CACHE_SIZE; *cacheLevel = NEW_CACHE_LEVEL; }
 static void GetLogicalProcessorCacheSizeFromSysConf(size_t* cacheLevel, size_t* cacheSize)
 {
     long size;
