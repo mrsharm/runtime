@@ -2510,6 +2510,11 @@ bool        gc_heap::gc_can_use_concurrent = false;
 
 bool        gc_heap::temp_disable_concurrent_p = false;
 
+void* gc_heap::address_last_decommit = nullptr;
+size_t gc_heap::size_last_decommit = 0;
+int gc_heap::bucket_last_decommit = -1;
+int gc_heap::h_number_last_decommit = 0;
+
 uint32_t    gc_heap::cm_in_progress = FALSE;
 
 BOOL        gc_heap::dont_restart_ee_p = FALSE;
@@ -7555,6 +7560,11 @@ bool gc_heap::virtual_decommit (void* address, size_t size, int bucket, int h_nu
 #endif //!HOST_64BIT
 
     bool decommit_succeeded_p = ((bucket != recorded_committed_bookkeeping_bucket) && use_large_pages_p) ? true : GCToOSInterface::VirtualDecommit (address, size);
+
+    address_last_decommit = address;
+    size_last_decommit = size;
+    bucket_last_decommit = bucket;
+    h_number_last_decommit = h_number;
 
     reduce_committed_bytes (address, size, bucket, h_number, decommit_succeeded_p);
 

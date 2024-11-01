@@ -5561,6 +5561,11 @@ private:
     // Changed in a single GC and reset outside GC in API implementation.
     PER_HEAP_ISOLATED_FIELD BOOL fgn_last_gc_was_concurrent;
 
+    PER_HEAP_ISOLATED_FIELD void* address_last_decommit;
+    PER_HEAP_ISOLATED_FIELD size_t size_last_decommit;
+    PER_HEAP_ISOLATED_FIELD int bucket_last_decommit;
+    PER_HEAP_ISOLATED_FIELD int h_number_last_decommit;
+
     // Only changed by API
     PER_HEAP_ISOLATED_FIELD bool temp_disable_concurrent_p;
 #endif //BACKGROUND_GC
