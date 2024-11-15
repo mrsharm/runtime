@@ -24490,29 +24490,29 @@ void gc_heap::garbage_collect (int n)
             if (do_concurrent_p)
             {
 #ifdef DYNAMIC_HEAP_COUNT
-                total_bgc_threads = max (total_bgc_threads, n_heaps);
+                // total_bgc_threads = max (total_bgc_threads, n_heaps);
 
-                int diff = n_heaps - last_bgc_n_heaps;
-                if (diff > 0)
-                {
-                    int saved_idle_bgc_thread_count = dynamic_heap_count_data.idle_bgc_thread_count;
-                    int max_idle_event_count = min (n_heaps, last_total_bgc_threads);
-                    int idle_events_to_set = max_idle_event_count - last_bgc_n_heaps;
-                    if (idle_events_to_set > 0)
-                    {
-                        Interlocked::ExchangeAdd (&dynamic_heap_count_data.idle_bgc_thread_count, -idle_events_to_set);
-                        dprintf (6666, ("%d BGC threads exist, setting %d idle events for h%d-h%d, total idle %d -> %d",
-                            total_bgc_threads, idle_events_to_set, last_bgc_n_heaps, (last_bgc_n_heaps + idle_events_to_set - 1),
-                            saved_idle_bgc_thread_count, VolatileLoadWithoutBarrier (&dynamic_heap_count_data.idle_bgc_thread_count)));
-                        for (int heap_idx = last_bgc_n_heaps; heap_idx < max_idle_event_count; heap_idx++)
-                        {
-                            g_heaps[heap_idx]->bgc_idle_thread_event.Set();
-                        }
-                    }
-                }
+                // int diff = n_heaps - last_bgc_n_heaps;
+                // if (diff > 0)
+                // {
+                //     int saved_idle_bgc_thread_count = dynamic_heap_count_data.idle_bgc_thread_count;
+                //     int max_idle_event_count = min (n_heaps, last_total_bgc_threads);
+                //     int idle_events_to_set = max_idle_event_count - last_bgc_n_heaps;
+                //     if (idle_events_to_set > 0)
+                //     {
+                //         Interlocked::ExchangeAdd (&dynamic_heap_count_data.idle_bgc_thread_count, -idle_events_to_set);
+                //         dprintf (6666, ("%d BGC threads exist, setting %d idle events for h%d-h%d, total idle %d -> %d",
+                //             total_bgc_threads, idle_events_to_set, last_bgc_n_heaps, (last_bgc_n_heaps + idle_events_to_set - 1),
+                //             saved_idle_bgc_thread_count, VolatileLoadWithoutBarrier (&dynamic_heap_count_data.idle_bgc_thread_count)));
+                //         for (int heap_idx = last_bgc_n_heaps; heap_idx < max_idle_event_count; heap_idx++)
+                //         {
+                //             g_heaps[heap_idx]->bgc_idle_thread_event.Set();
+                //         }
+                //     }
+                // }
 
-                last_bgc_n_heaps = n_heaps;
-                last_total_bgc_threads = total_bgc_threads;
+                // last_bgc_n_heaps = n_heaps;
+                // last_total_bgc_threads = total_bgc_threads;
 #endif //DYNAMIC_HEAP_COUNT
 
 #ifdef FEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP
@@ -39864,7 +39864,7 @@ void gc_heap::bgc_thread_function()
 #ifdef DYNAMIC_HEAP_COUNT
         if (n_heaps <= heap_number)
         {
-            Interlocked::Increment (&dynamic_heap_count_data.idle_bgc_thread_count);
+            // Interlocked::Increment (&dynamic_heap_count_data.idle_bgc_thread_count);
             add_to_bgc_hc_history (hc_record_bgc_inactive);
 
             // this is the case where we have more background GC threads than heaps
@@ -39880,16 +39880,16 @@ void gc_heap::bgc_thread_function()
         {
             if (heap_number == 0)
             {
-                int spin_count = 1024;
-                int idle_bgc_thread_count = total_bgc_threads - n_heaps;
-                dprintf (9999, ("n_heaps %d, total %d bgc threads, bgc idle should be %d and is %d",
-                    n_heaps, total_bgc_threads, idle_bgc_thread_count, VolatileLoadWithoutBarrier (&dynamic_heap_count_data.idle_bgc_thread_count)));
-                if (idle_bgc_thread_count != dynamic_heap_count_data.idle_bgc_thread_count)
-                {
-                    spin_and_wait (spin_count, (idle_bgc_thread_count == dynamic_heap_count_data.idle_bgc_thread_count));
-                    dprintf (9999, ("current idle is %d, trying to get to %d",
-                        VolatileLoadWithoutBarrier (&dynamic_heap_count_data.idle_bgc_thread_count), idle_bgc_thread_count));
-                }
+                // int spin_count = 1024;
+                // int idle_bgc_thread_count = total_bgc_threads - n_heaps;
+                // dprintf (9999, ("n_heaps %d, total %d bgc threads, bgc idle should be %d and is %d",
+                //     n_heaps, total_bgc_threads, idle_bgc_thread_count, VolatileLoadWithoutBarrier (&dynamic_heap_count_data.idle_bgc_thread_count)));
+                // if (idle_bgc_thread_count != dynamic_heap_count_data.idle_bgc_thread_count)
+                // {
+                //     spin_and_wait (spin_count, (idle_bgc_thread_count == dynamic_heap_count_data.idle_bgc_thread_count));
+                //     dprintf (9999, ("current idle is %d, trying to get to %d",
+                //         VolatileLoadWithoutBarrier (&dynamic_heap_count_data.idle_bgc_thread_count), idle_bgc_thread_count));
+                // }
             }
 
             add_to_bgc_hc_history (hc_record_bgc_active);
@@ -39898,11 +39898,11 @@ void gc_heap::bgc_thread_function()
 
         if (heap_number == 0)
         {
-            gc_background_running = TRUE;
-            dprintf (6666, (ThreadStressLog::gcStartBgcThread(), heap_number,
-                generation_free_list_space (generation_of (max_generation)),
-                generation_free_obj_space (generation_of (max_generation)),
-                dd_fragmentation (dynamic_data_of (max_generation))));
+            // gc_background_running = TRUE;
+            // dprintf (6666, (ThreadStressLog::gcStartBgcThread(), heap_number,
+            //     generation_free_list_space (generation_of (max_generation)),
+            //     generation_free_obj_space (generation_of (max_generation)),
+            //     dd_fragmentation (dynamic_data_of (max_generation))));
         }
 
         gc1();
